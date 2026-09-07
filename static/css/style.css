@@ -493,7 +493,7 @@ h1, .brand {
     font-size: 0.8rem;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     html,
     body {
         overflow-x: hidden;

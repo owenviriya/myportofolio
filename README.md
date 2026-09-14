@@ -26,6 +26,10 @@ python manage.py runserver
 
 Buka http://localhost:8000/ pada browser.
 
+## Deployment
+
+Website yang sudah di-deploy dapat diakses melalui [PWS](https://owen-viriya-myportofolio.pws.cs.ui.ac.id/).
+
 ### Tugas 1
 
 1. Penggunaan Elemen Semantik HTML5

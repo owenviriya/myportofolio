@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from main.models import Experience
+from main.models import Experience, Education, SkillGroup, Language
 
 def show_main(request):
     context = {
@@ -20,3 +20,18 @@ def show_experience(request):
         "experience_list": Experience.objects.all(),
     }
     return render(request, "experience.html", context)
+
+def show_education(request):
+    context = {
+        "name": "Owen Viriya Chandra",
+        "education_list": Education.objects.all(),
+    }
+    return render(request, "education.html", context)
+
+def show_skills(request):
+    context = {
+        "name": "Owen Viriya Chandra",
+        "skill_groups": SkillGroup.objects.all().order_by("order"),
+        "languages": Language.objects.all().order_by("order")
+    }
+    return render(request, "skills.html", context)

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ name }} - Portfolio</title>
+    <title>{{ name }} - Experience</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -16,43 +16,53 @@
         <a href="{% url 'main:show_main' %}" class="brand">{{ name }}</a>
         <nav>
             <a href="{% url 'main:show_main' %}">Profile</a>
-            <a href="#education">Education</a>
+            <a href="{% url 'main:show_education' %}">Education</a>
             <a href="{% url 'main:show_experience' %}">Experience</a>
-            <a href="#skills">Skills</a>
+            <a href="{% url 'main:show_skills' %}">Skills</a>
         </nav>
     </div>
 </header>
 <main>
-    <section class="experience-section" id="experience">
-        <div class="container">
-            <p class="section-kicker">Perjalanan saya sejauh ini</p>
-            <h1>Experience</h1>
 
-            <div class="experience-grid">
-                {% for experience in experience_list %}
-                    <article class="experience-card">
-                        <span class="experience-category">
-                            {{ experience.get_category_display }}
-                        </span>
-                        <h2>{{ experience.title }}</h2>
-                        <p class="experience-description">
-                            {{ experience.description }}
-                        </p>
-
-                        {% if experience.is_ongoing %}
-                            <p class="experience-status">Sedang berlangsung</p>
-                        {% else %}
-                            <p class="experience-status">Selesai</p>
-                        {% endif %}
+     <section class="site-section" id="experience">
+            <div class="container">
+                <h2 class="section-title" id="experience-title">Experience</h2>
+                <div class="experience-list">
+                    {% for experience in experience_list %}
+                    <article class="experience-item">
+                        <img class="experience-logo" src="{{experience.logo}}" alt="{{experience.organization}}">
+                        <div class="experience-header">
+                            <div>
+                                <span class="experience-period">{{experience.period}}</span>
+                                <h3>{{ experience.title }}</h3>
+                                <p class="experience-organization">{{experience.organization}}</p>
+                            </div>
+                            {% if experience.location %}
+                            <span class="experience-location">{{experience.location}}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="experience-summary">{{experience.description}}</p>
+                        <ul class="experience-highlights">
+                            {% for highlight in experience.highlights %}
+                            <li>{{highlight}}</li>
+                            {% endfor %}
+                        </ul>
+                        <div class="experience-tags">
+                            {% for tag in experience.tags %}
+                            <span>{{tag}}</span>
+                            {% endfor %}
+                        </div>
                     </article>
-                {% empty %}
-                    <p class="empty-state">
-                        Belum ada pengalaman yang ditambahkan.
-                    </p>
-                {% endfor %}
+                    {% empty %}
+                        <p class="empty-state">
+                            No experience have been added yet.
+                        </p>
+                    {% endfor %}
+
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
 </main>
 
 

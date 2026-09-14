@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ name }} - Skills</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+<body>
+<header class="site-header">
+    <div class="container">
+        <a href="{% url 'main:show_main' %}" class="brand">{{ name }}</a>
+        <nav>
+            <a href="{% url 'main:show_main' %}">Profile</a>
+            <a href="{% url 'main:show_education' %}">Education</a>
+            <a href="{% url 'main:show_experience' %}">Experience</a>
+            <a href="{% url 'main:show_skills' %}">Skills</a>
+        </nav>
+    </div>
+</header>
+<main>
+    <section class="site-section" id="skills">
+        <div class="container">
+            <h2 class="section-title" id="skills-title">Skills</h2>
+
+            <div class="skills-grid">
+                {% for group in skill_groups %}
+                <article class="skill-card">
+                    <h3>{{group.group_name}}</h3>
+                    <div class="skill-tags">
+                        {% for skill in group.skills %}
+                        <span>{{skill}}</span>
+                        {% endfor %}
+                    </div>
+                </article>
+                {% empty %}
+                    <p class="empty-state">
+                        No skills have been added yet.
+                    </p>
+                {% endfor %}
+            </div>
+
+            <div class="languages-block">
+                <h3 class="subsection-title">Languages</h3>
+                <div class="language-list">
+                    {% for language in languages %}
+                    <div class="language-item">
+                        <strong>{{language.language}}</strong>
+                        <span>{{language.proficiency}}</span>
+                    </div>
+                    {% empty %}
+                        <p class="empty-state">
+                            No languages have been added yet.
+                        </p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 {{ name }}. Faculty of Computer Science, Universitas Indonesia.</p>
+        </div>
+    </footer>
+
+    
+</body>
+</html>

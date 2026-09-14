@@ -151,3 +151,6 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+CSRF_TRUSTED_ORIGINS = ["https://owen-viriya-myportofolio.pws.cs.ui.ac.id/"]
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

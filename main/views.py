@@ -71,9 +71,28 @@ def create_project(request):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": False,
     }
 
     return render(request, "projects_form.html", context)
+
+
+def update_project(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+    form = ProjectForm(request.POST or None, instance=project)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Project has been updated!")
+        return redirect("main:show_projects")
+
+    context = {
+        "name": "Owen Viriya Chandra",
+        "form": form,
+        "is_edit": True,
+    }
+    return render(request, "projects_form.html", context)
+
 
 def create_education(request):
     form = EducationForm(request.POST or None)
@@ -86,6 +105,7 @@ def create_education(request):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": False,
     }
 
     return render(request, "education_form.html", context)
@@ -197,6 +217,7 @@ def update_education(request, education_id):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": True,
     }
 
     return render(request, "education_form.html", context)
@@ -222,6 +243,7 @@ def create_experience(request):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": False,
     }
     return render(request, "experience_form.html", context)
 
@@ -238,6 +260,7 @@ def update_experience(request, experience_id):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": True,
     }
     return render(request, "experience_form.html", context)
 
@@ -264,6 +287,7 @@ def update_skill_group(request, skill_group_id):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": True,
     }
     return render(request, "skill_group_form.html", context)
 
@@ -289,6 +313,7 @@ def create_skill_group(request):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": False,
     }
     return render(request, "skill_group_form.html", context)
 
@@ -305,6 +330,7 @@ def update_language(request, language_id):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": True,
     }
     return render(request, "language_form.html", context)
 
@@ -330,5 +356,6 @@ def create_language(request):
     context = {
         "name": "Owen Viriya Chandra",
         "form": form,
+        "is_edit": False,
     }
     return render(request, "language_form.html", context)

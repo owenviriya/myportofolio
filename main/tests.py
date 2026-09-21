@@ -107,6 +107,38 @@ class MainTest(TestCase):
         self.assertRedirects(response, reverse("main:show_projects"))
         self.assertFalse(Project.objects.filter(pk=project.id).exists())
 
+    def test_project_update_flow(self):
+        project = Project.objects.create(
+            title="Project Before Update",
+            description="Original description",
+            tech_stack="Django",
+            project_url="https://example.com/project",
+            project_image_url="https://example.com/project.png",
+        )
+        update_url = reverse("main:update_project", args=[project.id])
+
+        response = self.client.get(update_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Edit Project")
+        self.assertContains(response, "Project Before Update")
+
+        response = self.client.post(
+            update_url,
+            {
+                "title": "Project After Update",
+                "description": "Updated description",
+                "tech_stack": "Django, Python",
+                "project_url": "https://example.com/updated-project",
+                "project_image_url": "https://example.com/updated-project.png",
+            },
+        )
+
+        self.assertRedirects(response, reverse("main:show_projects"))
+        project.refresh_from_db()
+        self.assertEqual(project.title, "Project After Update")
+        self.assertEqual(project.description, "Updated description")
+        self.assertEqual(project.tech_stack, "Django, Python")
+
     def test_projects_page_renders_shared_delete_modal(self):
         project = Project.objects.create(
             title="Modal Test Project",

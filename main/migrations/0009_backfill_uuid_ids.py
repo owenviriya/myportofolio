@@ -4,24 +4,14 @@ from django.db import migrations
 
 
 def backfill_uuid_ids(apps, schema_editor):
-    connection = schema_editor.connection
-    quote = connection.ops.quote_name
+    database = schema_editor.connection.alias
 
     for model_name in ("Education", "Language", "SkillGroup"):
         model = apps.get_model("main", model_name)
-        table = quote(model._meta.db_table)
-        pk_column = quote(model._meta.pk.column)
+        manager = model._base_manager.using(database)
 
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT {pk_column} FROM {table}")
-            old_ids = [row[0] for row in cursor.fetchall()]
-
-            for old_id in old_ids:
-                new_id = uuid.uuid4().hex
-                cursor.execute(
-                    f"UPDATE {table} SET {pk_column} = %s WHERE {pk_column} = %s",
-                    [new_id, old_id],
-                )
+        for record in manager.only("pk").iterator(chunk_size=500):
+            manager.filter(pk=record.pk).update(**{model._meta.pk.name: uuid.uuid4()})
 
 
 class Migration(migrations.Migration):

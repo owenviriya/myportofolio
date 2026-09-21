@@ -63,11 +63,28 @@ Data portofolio sebaiknya disimpan pada model, karena model memisahkan data dari
 makemigrations digunakan untuk membuat file migration berdasarkan perubahan yang dilakukan pada model. File tersebut berisi instruksi perubahan schema database, tetapi belum langsung mengubah database. Sementara itu, migrate digunakan untuk menjalankan file migration tersebut sehingga perubahan schema benar-benar diterapkan pada database. Contohnya, ketika saya menambahkan model Education atau menambahkan field location pada model Experience, saya perlu menjalankan python manage.py makemigrations untuk membuat file migration baru. Setelah itu, saya menjalankan python manage.py migrate agar tabel atau kolom yang baru tersebut dibuat di database.
 
 
+### Tugas 3
+
+1. Alasan menggunakan ModelForm dan CSRF token
+
+Saya menggunakan ModelForm karena field pada form bisa dibuat berdasarkan model Django, sehingga saya tidak perlu menghubungkan setiap input ke model secara manual. Saya juga bisa mengatur label dan widget field melalui form, sedangkan Django membantu memeriksa apakah data yang dikirim sudah sesuai sebelum disimpan. Setelah form valid, saya bisa memakai `form.save()` untuk membuat data baru atau memperbarui data yang sudah ada. Jika memakai form HTML biasa, saya perlu membuat input, mengambil nilainya, memvalidasi, dan menyimpan setiap field sendiri. Saya menambahkan `{% csrf_token %}` agar Django dapat memeriksa token pada request POST dan membantu mencegah situs lain mengirim request palsu melalui browser pengguna.
+
+2. Alasan JSON banyak digunakan dibandingkan XML
+
+Menurut saya, JSON lebih sering digunakan karena bentuknya ringkas dan cukup mudah dibaca, terutama karena strukturnya mirip object dan array yang biasa dipakai JavaScript. Browser dan banyak bahasa pemrograman juga menyediakan cara yang mudah untuk membaca JSON, sehingga format ini praktis untuk bertukar data melalui API. XML tetap bisa digunakan untuk menyimpan data terstruktur, tetapi tag pembuka dan penutupnya biasanya membuat data menjadi lebih panjang. Untuk kebutuhan aplikasi web seperti portofolio saya, JSON terasa sederhana untuk dikirim dan diproses.
+
+3. Alur pengiriman data portofolio dalam JSON
+
+Pada bagian Education, browser meminta halaman `/education/`, lalu view `show_education` memanggil `get_education_json` untuk mengambil data dari database. View JSON tersebut dapat menyaring data berdasarkan nama institusi, kemudian `serializers.serialize("json", education)` mengubah queryset Django menjadi JSON yang dikirim dengan content type `application/json`. Serialization diperlukan karena queryset dan object Django adalah object Python yang tidak bisa langsung dikirim sebagai JSON. Setelah menerima response, `show_education` membaca isinya dan memakai `serializers.deserialize` untuk mengubah JSON kembali menjadi object Django. Object tersebut dimasukkan ke context dan digunakan oleh template `education.html` untuk menampilkan data pendidikan.
+
+
 ## AI Disclosure
 
 Dalam pengembangan website ini, saya menggunakan Gemini 3.6 Flash sebagai alat bantu belajar, brainstorming, dan debugging. Saya memberikan potongan HTML/CSS, screenshot, serta pesan error untuk memperoleh penjelasan dan alternatif solusi. Gemini membantu saya memahami elemen semantik HTML5, timeline, pseudo-element `::before`, responsive layout, media query, sticky navbar, smooth scrolling, Experience, Skills, efek hover, serta Conventional Commits. Saya tidak menyalin jawabannya secara langsung, tetapi menyesuaikan setiap saran dengan struktur proyek dan desain yang saya inginkan. Hasil akhir saya verifikasi melalui browser, DevTools, perangkat seluler, dan `python manage.py check`. Karena beberapa saran AI dapat bersifat umum atau kurang sesuai dengan kondisi repository, keputusan desain saya, implementasi, pengujian, dan perbaikan akhir tetap saya lakukan sendiri.
 
 Pada Tugas 2, saya juga menggunakan ChatGPT Luna 5.6 sebagai tutor untuk memahami penerapan arsitektur MVT, pembuatan model, URL, view, template dinamis, migration, pengisian data melalui database, dan pembuatan test case Django. Saya menggunakan AI untuk mendapatkan penjelasan bertahap, memeriksa kemungkinan kesalahan, serta membantu mengecek hasil implementasi. Saya tetap menyesuaikan kode dengan desain dan struktur project saya sendiri, melakukan verifikasi, serta bertanggung jawab memahami dan memeriksa hasil akhirnya.
+
+Pada Tugas 3, saya juga menggunakan Codex sebagai tutor untuk memahami ModelForm, CSRF, serialization dan deserialization JSON, serta alur CRUD pada Django. Saya menggunakan AI untuk mendapatkan penjelasan bertahap dan membahas bagian yang belum saya pahami. Codex juga membantu menyesuaikan beberapa bagian view, template, dan test sesuai arahan saya. Saya meninjau perubahan tersebut dan memeriksa hasilnya dengan `python manage.py test` (20 tes lulus) serta `python manage.py check`. Saya tetap bertanggung jawab memahami kode dan menentukan hasil akhirnya.
 
 Log chat AI:
 - Tugas 1 : https://share.gemini.google/j5HEMG8OMOUF

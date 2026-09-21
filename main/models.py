@@ -16,6 +16,7 @@ class Experience(models.Model):
         return self.title
 
 class Education(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     institution = models.CharField(max_length=255)
     period = models.CharField(max_length=50)
     description = models.TextField()
@@ -26,6 +27,7 @@ class Education(models.Model):
         return f"{self.institution} ({self.period})"
 
 class SkillGroup(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     group_name = models.CharField(max_length=255)
     skills = models.JSONField(default=list)
     order = models.IntegerField(default=0)
@@ -34,6 +36,7 @@ class SkillGroup(models.Model):
         return f"{self.group_name}"
 
 class Language(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     language = models.CharField(max_length=255)
     proficiency = models.CharField(max_length=255)
     order = models.IntegerField(default=0)
@@ -42,11 +45,7 @@ class Language(models.Model):
         return f"{self.language}"
     
 class Project(models.Model):
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False
-    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
     tech_stack = models.CharField(max_length=255)

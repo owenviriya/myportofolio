@@ -1,0 +1,43 @@
+<p class="delete-trigger-wrap">
+    <button type="button"
+            class="button button-danger"
+            popovertarget="delete-{{ record_slug }}-{{ record_id }}"
+            aria-label="Delete {{ record_type }}: {{ record_label }}"
+            title="Delete {{ record_type }}">
+        Delete
+    </button>
+</p>
+<div id="delete-{{ record_slug }}-{{ record_id }}"
+     class="delete-modal"
+     popover="auto"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="delete-title-{{ record_slug }}-{{ record_id }}">
+    <button type="button"
+            class="delete-modal__backdrop"
+            popovertarget="delete-{{ record_slug }}-{{ record_id }}"
+            popovertargetaction="hide"
+            aria-label="Close delete confirmation"></button>
+    <div class="delete-modal__content">
+        <button type="button"
+                class="delete-modal__close"
+                popovertarget="delete-{{ record_slug }}-{{ record_id }}"
+                popovertargetaction="hide"
+                aria-label="Close delete confirmation">×</button>
+        <h2 id="delete-title-{{ record_slug }}-{{ record_id }}">Delete {{ record_type|capfirst }}?</h2>
+        <p>
+            Are you sure you want to delete
+            <strong>{{ record_label }}</strong>?
+        </p>
+        <div class="delete-modal__actions">
+            <button type="button"
+                    class="button button-secondary"
+                    popovertarget="delete-{{ record_slug }}-{{ record_id }}"
+                    popovertargetaction="hide">Cancel</button>
+            <form method="post" action="{{ delete_url }}">
+                {% csrf_token %}
+                <button type="submit" class="button button-danger">Yes, Delete</button>
+            </form>
+        </div>
+    </div>
+</div>

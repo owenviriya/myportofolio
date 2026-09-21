@@ -1,31 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ name }} - Education</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
+{% extends "base.html" %}
+{% load static %}
 
-</head>
-<body>
-<header class="site-header">
-    <div class="container">
-        <a href="{% url 'main:show_main' %}" class="brand">{{ name }}</a>
-        <nav>
-            <a href="{% url 'main:show_main' %}">Profile</a>
-            <a href="{% url 'main:show_education' %}">Education</a>
-            <a href="{% url 'main:show_experience' %}">Experience</a>
-            <a href="{% url 'main:show_skills' %}">Skills</a>
-        </nav>
-    </div>
-</header>
+{% block meta %}
+    <title>{{ name }} - Education</title>
+{% endblock meta %}
+
+{% block content %}
 <main>
      <section class="site-section" id="education">
             <div class="container">
                 <h2 class="section-title" id="education-title">Education</h2>
+                <a href="{% url 'main:create_education' %}"
+                       class="button project-add-button">
+                        <span aria-hidden="true">+</span>
+                        Add Education
+                    </a>
 
                 <div class="timeline">
                 {% for education in education_list %}
@@ -36,25 +25,21 @@
                             <h3>{{education.institution}}</h3>
                             <p>{{education.description}}</p>
                             <p class="timeline-highlight">{{education.highlight}}</p>
+                            <div class="record-actions">
+                                <a href="{% url 'main:update_education' education.id %}"
+                                   class="button button-secondary">Edit</a>
+                                {% url 'main:delete_education' education.id as delete_url %}
+                                {% include "components/record_delete_modal.html" with record_slug="education" record_id=education.id record_type="education" record_label=education.institution delete_url=delete_url %}
+                            </div>
                         </div>
                     </article>
                 {% empty %}
                     <p class="empty-state">
-                        No education have been added yet.
+                        No education entries have been added yet.
                     </p>
                 {% endfor %}
                 </div>
             </div>
         </section>
 </main>
-
-
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 {{ name }}. Faculty of Computer Science, Universitas Indonesia.</p>
-        </div>
-    </footer>
-
-    
-</body>
-</html>
+{% endblock content %}

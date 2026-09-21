@@ -275,6 +275,10 @@ h1, .brand {
     text-transform: uppercase;
 }
 
+.timeline-content {
+    min-width: 0;
+}
+
 .timeline-content h3 {
     margin-bottom: 0.25rem;
     font-family: "Space Grotesk", -apple-system, sans-serif;
@@ -292,6 +296,11 @@ h1, .brand {
     color: var(--accent);
     font-size: 0.9rem;
     font-weight: 700;
+}
+
+.timeline-content h3,
+.timeline-content p {
+    overflow-wrap: anywhere;
 }
 
 .experience-list {
@@ -434,6 +443,7 @@ h1, .brand {
 }
 
 .skill-card {
+    min-width: 0;
     min-height: 170px;
     padding: 1.5rem;
     border: 1px solid var(--line);
@@ -467,6 +477,7 @@ h1, .brand {
     border-radius: 999px;
     color: var(--text-muted);
     font-size: 0.75rem;
+    overflow-wrap: anywhere;
     transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -503,6 +514,35 @@ h1, .brand {
 .language-item span {
     color: var(--text-muted);
     font-size: 0.8rem;
+}
+
+.record-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1rem;
+}
+
+.record-actions form,
+.delete-modal__actions form {
+    margin: 0;
+}
+
+.record-actions .button,
+.delete-trigger-wrap .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.9rem;
+    line-height: 1.2;
+}
+
+.language-item__actions {
+    gap: 0.5rem;
+    margin-top: 0.5rem;
 }
 
 .experience-section {
@@ -716,11 +756,15 @@ h1, .brand {
     display: none !important;
 }
 
-.project-actions .experience-status {
+.project-actions .delete-trigger-wrap {
     margin-top: 0;
 }
 
-.project-delete-modal {
+.delete-trigger-wrap {
+    margin: 0;
+}
+
+.delete-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -737,11 +781,11 @@ h1, .brand {
     justify-content: center;
 }
 
-.project-delete-modal:popover-open {
+.delete-modal:popover-open {
     display: flex;
 }
 
-.project-delete-modal__backdrop {
+.delete-modal__backdrop {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -752,7 +796,7 @@ h1, .brand {
     cursor: default;
 }
 
-.project-delete-modal__content {
+.delete-modal__content {
     position: relative;
     z-index: 1;
     width: min(100%, 480px);
@@ -763,7 +807,7 @@ h1, .brand {
     box-shadow: 0 1rem 3rem rgba(28, 25, 23, 0.22);
 }
 
-.project-delete-modal__content h2 {
+.delete-modal__content h2 {
     margin: 0 0 0.75rem;
     font-family:
         "Space Grotesk",
@@ -772,7 +816,7 @@ h1, .brand {
     font-size: 1.5rem;
 }
 
-.project-delete-modal__close {
+.delete-modal__close {
     position: absolute;
     top: 1rem;
     right: 1rem;
@@ -785,7 +829,7 @@ h1, .brand {
     cursor: pointer;
 }
 
-.project-delete-modal__actions {
+.delete-modal__actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
@@ -794,6 +838,13 @@ h1, .brand {
 
 .button-danger {
     background: #b42318;
+}
+
+@media (max-width: 960px) {
+    .skills-grid,
+    .language-list {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 600px) {
@@ -815,24 +866,29 @@ h1, .brand {
         width: 100%;
     }
 
-    .project-delete-modal {
+    .delete-modal {
         align-items: flex-end;
         padding: 0;
     }
 
-    .project-delete-modal__content {
+    .delete-modal__content {
         width: 100%;
         padding: 1.25rem;
         border-radius: var(--radius) var(--radius) 0 0;
     }
 
-    .project-delete-modal__actions {
+    .delete-modal__actions {
         flex-direction: column-reverse;
     }
 
-    .project-delete-modal__actions .button {
+    .delete-modal__actions form,
+    .delete-modal__actions .button {
         width: 100%;
         text-align: center;
+    }
+
+    .record-actions {
+        gap: 0.5rem;
     }
 }
 
@@ -885,12 +941,12 @@ h1, .brand {
     background-color: #4b5563;
 }
 
-.project-delete-modal__content {
+.delete-modal__content {
     background-color: var(--paper);
     color: var(--ink);
 }
 
-.project-delete-modal__content p {
+.delete-modal__content p {
     color: var(--text-muted);
 }
 

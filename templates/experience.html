@@ -10,8 +10,10 @@
      <section class="site-section" id="experience">
             <div class="container">
                 <h2 class="section-title" id="experience-title">Experience</h2>
-                <a href="{% url 'main:create_experience' %}"
+                {% if user.is_superuser %}
+                    <a href="{% url 'main:create_experience' %}"
                    class="button project-add-button">+ Add Experience</a>
+                {% endif %}
                 <div class="experience-list">
                     {% for experience in experience_list %}
                     <article class="experience-item">
@@ -39,10 +41,16 @@
                             {% endfor %}
                         </div>
                         <div class="record-actions">
-                            <a href="{% url 'main:update_experience' experience.id %}"
+                            {% if user.is_superuser or can_edit %}
+                                <a href="{% url 'main:update_experience' experience.id %}"
                                class="button button-secondary">Edit</a>
+                            {% endif %}
                             {% url 'main:delete_experience' experience.id as delete_url %}
-                            {% include "components/record_delete_modal.html" with record_slug="experience" record_id=experience.id record_type="experience" record_label=experience.title delete_url=delete_url %}
+                            {% url 'main:toggle_experience_star' experience.id as star_url %}
+                            {% include "components/star.html" with item=experience action_url=star_url %}
+                            {% if user.is_superuser %}
+                                {% include "components/record_delete_modal.html" with record_slug="experience" record_id=experience.id record_type="experience" record_label=experience.title delete_url=delete_url %}
+                            {% endif %}
                         </div>
                     </article>
                     {% empty %}

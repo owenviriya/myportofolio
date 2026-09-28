@@ -13,6 +13,9 @@ class Experience(models.Model):
     highlights = models.JSONField(default=list)
     tags = models.JSONField(default=list)
 
+    starred_by = models.ManyToManyField(
+        User, related_name="starred_experiences", blank=True)
+
     def __str__(self):
         return self.title
 

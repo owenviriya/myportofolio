@@ -11,8 +11,10 @@
     <section class="site-section" id="skills">
         <div class="container">
             <h2 class="section-title" id="skills-title">Skills</h2>
-            <a href="{% url 'main:create_skill_group' %}"
-               class="button project-add-button">+ Add Skill Group</a>
+            {% if user.is_superuser %}
+                <a href="{% url 'main:create_skill_group' %}"
+                class="button project-add-button">+ Add Skill Group</a>
+            {% endif %}
 
             <div class="skills-grid">
                 {% for group in skill_groups %}
@@ -24,10 +26,15 @@
                         {% endfor %}
                     </div>
                     <div class="record-actions">
-                        <a href="{% url 'main:update_skill_group' group.id %}"
-                           class="button button-secondary">Edit</a>
-                        {% url 'main:delete_skill_group' group.id as delete_url %}
-                        {% include "components/record_delete_modal.html" with record_slug="skill-group" record_id=group.id record_type="skill group" record_label=group.group_name delete_url=delete_url %}
+                        {% if user.is_superuser or can_edit %}
+                            <a href="{% url 'main:update_skill_group' group.id %}"
+                            class="button button-secondary">Edit</a>
+                        {% endif %}
+
+                        {% if user.is_superuser %}
+                            {% url 'main:delete_skill_group' group.id as delete_url %}
+                            {% include "components/record_delete_modal.html" with record_slug="skill-group" record_id=group.id record_type="skill group" record_label=group.group_name delete_url=delete_url %}
+                        {% endif %}
                     </div>
                 </article>
                 {% empty %}
@@ -39,18 +46,25 @@
 
             <div class="languages-block">
                 <h3 class="subsection-title">Languages</h3>
-                <a href="{% url 'main:create_language' %}"
-                   class="button project-add-button">+ Add Language</a>
+                {% if user.is_superuser %}
+                    <a href="{% url 'main:create_language' %}"
+                    class="button project-add-button">+ Add Language</a>
+                {% endif %}
                 <div class="language-list">
                     {% for language in languages %}
                     <div class="language-item">
                         <strong>{{language.language}}</strong>
                         <span>{{language.proficiency}}</span>
                         <div class="record-actions language-item__actions">
-                            <a href="{% url 'main:update_language' language.id %}"
-                               class="button button-secondary">Edit</a>
-                            {% url 'main:delete_language' language.id as delete_url %}
-                            {% include "components/record_delete_modal.html" with record_slug="language" record_id=language.id record_type="language" record_label=language.language delete_url=delete_url %}
+                            {% if user.is_superuser or can_edit %}
+                                <a href="{% url 'main:update_language' language.id %}"
+                                class="button button-secondary">Edit</a>
+                            {% endif %}
+
+                            {% if user.is_superuser %}
+                                {% url 'main:delete_language' language.id as delete_url %}
+                                {% include "components/record_delete_modal.html" with record_slug="language" record_id=language.id record_type="language" record_label=language.language delete_url=delete_url %}
+                            {% endif %}
                         </div>
                     </div>
                     {% empty %}

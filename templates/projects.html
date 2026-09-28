@@ -44,12 +44,13 @@
                                     {% if project.project_url %}
                                         <a href="{{ project.project_url }}" class="button">View Project</a>
                                     {% endif %}
-                                    {% if user.is_superuser %}
+                                    {% if user.is_superuser or can_edit %}
                                         <a href="{% url 'main:update_project' project.id %}"
                                            class="button button-secondary">Edit</a>
                                     {% endif %}
                                     {% url 'main:delete_project' project.id as delete_url %}
-                                    {% include "components/project_star.html" with project=project %}
+                                    {% url 'main:toggle_star' project.id as star_url %}
+                                    {% include "components/star.html" with item=project action_url=star_url %}
                                     {% if user.is_superuser %}
                                         {% include "components/record_delete_modal.html" with record_slug="project" record_id=project.id record_type="project" record_label=project.title delete_url=delete_url %}
                                     {% endif %}

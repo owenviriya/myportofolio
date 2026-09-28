@@ -86,7 +86,10 @@ Pada Tugas 2, saya juga menggunakan ChatGPT Luna 5.6 sebagai tutor untuk memaham
 
 Pada Tugas 3, saya menggunakan ChatGPT Luna 5.6 sebagai tutor untuk memahami ModelForm, CSRF, serialization dan deserialization JSON, serta alur CRUD dalam Django. Saya menggunakan AI untuk mendapatkan penjelasan bertahap, memeriksa kemungkinan kesalahan, serta membantu mengecek hasil implementasi. Saya tetap bertanggung jawab memahami kode dan melakukan verifikasi terhadap hasil akhir.
 
+Pada Tugas 4, saya menggunakan ChatGPT Luna 6 sebagai tutor interaktif untuk memahami autentikasi, otorisasi, session, cookie, dan CSRF, serta merencanakan penerapan peran Editor melalui Django Group. Saya meminta panduan bertahap, lalu mengimplementasikan sendiri pemeriksaan hak akses CRUD, relasi ManyToMany User pada Experience, migrasi database, dan komponen star yang dapat digunakan ulang. ChatGPT membantu meninjau perubahan pada view, template, migrasi, dan serialisasi JSON, serta menjelaskan kesalahan logika yang saya perbaiki. ChatGPT juga membantu memeriksa status migrasi, menjalankan pemeriksaan Django, dan memastikan development server dapat dimulai. Saya tetap bertanggung jawab memahami saran AI, menentukan implementasi akhir, dan melakukan verifikasi akhir terhadap alur aplikasi.
+
 Log chat AI:
 - Tugas 1 : https://share.gemini.google/j5HEMG8OMOUF
 - Tugas 2 : https://chatgpt.com/s/cx_6aa807d7051c81918c56e334cabc3eed
 - Tugas 3 : https://chatgpt.com/s/cx_6ab14304123c8191a77b0f9ac4bf6fa6
+- Tugas 4 : https://chatgpt.com/s/cx_6aba610172e081919fe2ffda23259e65

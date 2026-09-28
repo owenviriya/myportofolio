@@ -10,11 +10,13 @@
      <section class="site-section" id="education">
             <div class="container">
                 <h2 class="section-title" id="education-title">Education</h2>
-                <a href="{% url 'main:create_education' %}"
-                       class="button project-add-button">
-                        <span aria-hidden="true">+</span>
-                        Add Education
-                    </a>
+                {% if user.is_superuser %}
+                    <a href="{% url 'main:create_education' %}"
+                        class="button project-add-button">
+                            <span aria-hidden="true">+</span>
+                            Add Education
+                        </a>
+                {% endif %}
 
                 <div class="timeline">
                 {% for education in education_list %}
@@ -26,10 +28,15 @@
                             <p>{{education.description}}</p>
                             <p class="timeline-highlight">{{education.highlight}}</p>
                             <div class="record-actions">
-                                <a href="{% url 'main:update_education' education.id %}"
-                                   class="button button-secondary">Edit</a>
-                                {% url 'main:delete_education' education.id as delete_url %}
-                                {% include "components/record_delete_modal.html" with record_slug="education" record_id=education.id record_type="education" record_label=education.institution delete_url=delete_url %}
+                                {% if user.is_superuser or can_edit %}
+                                    <a href="{% url 'main:update_education' education.id %}"
+                                    class="button button-secondary">Edit</a>
+                                {% endif %}
+
+                                {% if user.is_superuser %}
+                                    {% url 'main:delete_education' education.id as delete_url %}
+                                    {% include "components/record_delete_modal.html" with record_slug="education" record_id=education.id record_type="education" record_label=education.institution delete_url=delete_url %}
+                                {% endif %}
                             </div>
                         </div>
                     </article>

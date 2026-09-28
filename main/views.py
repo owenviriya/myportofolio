@@ -39,9 +39,15 @@ def show_experience(request):
     )
     experience_list = [experience.object for experience in experiences]
 
+    if (not request.user.is_authenticated):
+        can_edit = False
+    else:
+        can_edit = request.user.groups.filter(name="Editor").exists()
+
     context = {
         "name": "Owen Viriya Chandra",
         "experience_list": experience_list,
+        "can_edit" : can_edit,
     }
     return render(request, "experience.html", context)
 
@@ -60,11 +66,17 @@ def show_skills(request):
         languages_response.content.decode("utf-8"),
     )
     languages = [language.object for language in languages_data]
+    
+    if (not request.user.is_authenticated):
+        can_edit = False
+    else:
+        can_edit = request.user.groups.filter(name="Editor").exists()
 
     context = {
         "name": "Owen Viriya Chandra",
         "skill_groups": skill_groups,
         "languages": languages,
+        "can_edit" : can_edit  ,
     }
     return render(request, "skills.html", context)
 
@@ -92,26 +104,29 @@ def create_project(request):
 
 @login_required(login_url="/login/")
 def update_project(request, project_id):
+    if request.user.is_superuser or request.user.groups.filter(name="Editor").exists():
+        project = get_object_or_404(Project, pk=project_id)
+        form = ProjectForm(request.POST or None, instance=project)
+    
+        if request.method == "POST" and form.is_valid():
+            form.save()
+            messages.success(request, "Project has been updated!")
+            return redirect("main:show_projects")
+    
+        context = {
+            "name": "Owen Viriya Chandra",
+            "form": form,
+            "is_edit": True,
+        }
+        return render(request, "projects_form.html", context)
+    raise PermissionDenied
+
+    
+
+@login_required(login_url="/login/")
+def create_education(request):
     if not request.user.is_superuser:
         raise PermissionDenied
-
-    project = get_object_or_404(Project, pk=project_id)
-    form = ProjectForm(request.POST or None, instance=project)
-
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Project has been updated!")
-        return redirect("main:show_projects")
-
-    context = {
-        "name": "Owen Viriya Chandra",
-        "form": form,
-        "is_edit": True,
-    }
-    return render(request, "projects_form.html", context)
-
-
-def create_education(request):
     form = EducationForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -138,10 +153,16 @@ def show_projects(request):
     projects = [project.object for project in projects]
     title_query = request.GET.get("title", "").strip()
 
+    if (not request.user.is_authenticated):
+        can_edit = False
+    else:
+        can_edit = request.user.groups.filter(name="Editor").exists()
+
     context = {
         "name": "Owen Viriya Chandra",
         "project_list": projects,
         "title_query": title_query,
+        "can_edit" : can_edit,
     }
     return render(request, "projects.html", context)
 
@@ -155,10 +176,16 @@ def show_education(request):
     education_list = [education.object for education in educations]
     institution_query = request.GET.get("institution", "").strip()
 
+    if (not request.user.is_authenticated):
+        can_edit = False
+    else:
+        can_edit = request.user.groups.filter(name="Editor").exists()
+
     context = {
         "name": "Owen Viriya Chandra",
         "education_list": education_list,
         "institution_query": institution_query,
+        "can_edit" : can_edit,
     }
     return render(request, "education.html", context)
 
@@ -179,7 +206,7 @@ def get_experience_json(request):
     if experience_query:
         experiences = experiences.filter(title__icontains=experience_query)
 
-    experiences_json = serializers.serialize("json", experiences)
+    experiences_json = serializers.serialize("json", experiences, use_natural_foreign_keys=True)
     return HttpResponse(experiences_json, content_type="application/json")
 
 def get_skill_groups_json(request):
@@ -225,24 +252,31 @@ def delete_project(request, project_id):
 
     return redirect("main:show_projects")
 
+@login_required(login_url="/login/")
 def update_education(request, education_id):
-    education = get_object_or_404(Education, pk=education_id)
-    form = EducationForm(request.POST or None, instance=education)
+    if request.user.is_superuser or request.user.groups.filter(name="Editor").exists():
+        education = get_object_or_404(Education, pk=education_id)
+        form = EducationForm(request.POST or None, instance=education)
 
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Education has been updated!")
-        return redirect("main:show_education")
+        if request.method == "POST" and form.is_valid():
+            form.save()
+            messages.success(request, "Education has been updated!")
+            return redirect("main:show_education")
 
-    context = {
-        "name": "Owen Viriya Chandra",
-        "form": form,
-        "is_edit": True,
-    }
+        context = {
+            "name": "Owen Viriya Chandra",
+            "form": form,
+            "is_edit": True,
+        }
 
-    return render(request, "education_form.html", context)
+        return render(request, "education_form.html", context)
+    else:
+        raise PermissionDenied
 
+@login_required(login_url="/login/")
 def delete_education(request, education_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied    
     education = get_object_or_404(Education, pk=education_id)
 
     if request.method == "POST":
@@ -251,8 +285,10 @@ def delete_education(request, education_id):
 
     return redirect("main:show_education")
 
-
+@login_required(login_url="/login/")
 def create_experience(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
     form = ExperienceForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -267,25 +303,30 @@ def create_experience(request):
     }
     return render(request, "experience_form.html", context)
 
-
+@login_required(login_url="/login/")
 def update_experience(request, experience_id):
-    experience = get_object_or_404(Experience, pk=experience_id)
-    form = ExperienceForm(request.POST or None, instance=experience)
+    if request.user.is_superuser or request.user.groups.filter(name="Editor").exists():
+        experience = get_object_or_404(Experience, pk=experience_id)
+        form = ExperienceForm(request.POST or None, instance=experience)
 
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Experience has been updated!")
-        return redirect("main:show_experience")
+        if request.method == "POST" and form.is_valid():
+            form.save()
+            messages.success(request, "Experience has been updated!")
+            return redirect("main:show_experience")
 
-    context = {
-        "name": "Owen Viriya Chandra",
-        "form": form,
-        "is_edit": True,
-    }
-    return render(request, "experience_form.html", context)
+        context = {
+            "name": "Owen Viriya Chandra",
+            "form": form,
+            "is_edit": True,
+        }
+        return render(request, "experience_form.html", context)
+    else:
+        raise PermissionDenied
 
-
+@login_required(login_url="/login/")
 def delete_experience(request, experience_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
     experience = get_object_or_404(Experience, pk=experience_id)
 
     if request.method == "POST":
@@ -294,25 +335,30 @@ def delete_experience(request, experience_id):
 
     return redirect("main:show_experience")
 
-
+@login_required(login_url="/login/")
 def update_skill_group(request, skill_group_id):
-    skill_group = get_object_or_404(SkillGroup, pk=skill_group_id)
-    form = SkillGroupForm(request.POST or None, instance=skill_group)
+    if request.user.is_superuser or request.user.groups.filter(name="Editor").exists():
 
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Skill Group has been updated!")
-        return redirect("main:show_skills")
+        skill_group = get_object_or_404(SkillGroup, pk=skill_group_id)
+        form = SkillGroupForm(request.POST or None, instance=skill_group)
 
-    context = {
-        "name": "Owen Viriya Chandra",
-        "form": form,
-        "is_edit": True,
-    }
-    return render(request, "skill_group_form.html", context)
+        if request.method == "POST" and form.is_valid():
+            form.save()
+            messages.success(request, "Skill Group has been updated!")
+            return redirect("main:show_skills")
 
+        context = {
+            "name": "Owen Viriya Chandra",
+            "form": form,
+            "is_edit": True,
+        }
+        return render(request, "skill_group_form.html", context)
+    raise PermissionDenied
 
+@login_required(login_url="/login/")
 def delete_skill_group(request, skill_group_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
     skill_group = get_object_or_404(SkillGroup, pk=skill_group_id)
 
     if request.method == "POST":
@@ -321,8 +367,10 @@ def delete_skill_group(request, skill_group_id):
 
     return redirect("main:show_skills")
 
-
+@login_required(login_url="/login/")
 def create_skill_group(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
     form = SkillGroupForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -337,25 +385,30 @@ def create_skill_group(request):
     }
     return render(request, "skill_group_form.html", context)
 
-
+@login_required(login_url="/login/")
 def update_language(request, language_id):
-    language = get_object_or_404(Language, pk=language_id)
-    form = LanguageForm(request.POST or None, instance=language)
+    if request.user.is_superuser or request.user.groups.filter(name="Editor").exists():
+        language = get_object_or_404(Language, pk=language_id)
+        form = LanguageForm(request.POST or None, instance=language)
 
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Language has been updated!")
-        return redirect("main:show_skills")
+        if request.method == "POST" and form.is_valid():
+            form.save()
+            messages.success(request, "Language has been updated!")
+            return redirect("main:show_skills")
 
-    context = {
-        "name": "Owen Viriya Chandra",
-        "form": form,
-        "is_edit": True,
-    }
-    return render(request, "language_form.html", context)
-
-
+        context = {
+            "name": "Owen Viriya Chandra",
+            "form": form,
+            "is_edit": True,
+        }
+        return render(request, "language_form.html", context)
+    else:
+        raise PermissionDenied
+    
+@login_required(login_url="/login/")
 def delete_language(request, language_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
     language = get_object_or_404(Language, pk=language_id)
 
     if request.method == "POST":
@@ -364,8 +417,10 @@ def delete_language(request, language_id):
 
     return redirect("main:show_skills")
 
-
+@login_required(login_url="/login/")
 def create_language(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
     form = LanguageForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -429,3 +484,16 @@ def toggle_star(request, project_id):
             project.starred_by.add(request.user)
 
     return redirect("main:show_projects")
+
+
+@login_required(login_url="/login/")
+def toggle_experience_star(request, experience_id):
+    experience = get_object_or_404(Experience, pk=experience_id)
+
+    if request.method == "POST":
+        if request.user in experience.starred_by.all():
+            experience.starred_by.remove(request.user)
+        else:
+            experience.starred_by.add(request.user)
+
+    return redirect("main:show_experience")

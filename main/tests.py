@@ -1,11 +1,18 @@
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.contrib.auth.models import User
 
 from main.models import Education, Experience, Language, Project, SkillGroup
 
 
 class MainTest(TestCase):
     def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="portfolio_owner",
+            email="owner@example.com",
+            password="test-password-123",
+        )
+
         self.experience = Experience.objects.create(
             title="Teaching Assistant of Programming Foundations 1",
             description="Membantu mahasiswa memahami dasar pemrograman.",
@@ -66,6 +73,7 @@ class MainTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "index.html")
         self.assertContains(response, "Owen Viriya Chandra")
+        self.assertContains(response, "Last Login")
         self.assertNotContains(response, self.experience.title)
         self.assertContains(response, f'href="{reverse("main:show_experience")}"')
         self.assertContains(response, f'href="{reverse("main:show_education")}"')
@@ -77,6 +85,7 @@ class MainTest(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_project_create_json_and_delete_flow(self):
+        self.client.force_login(self.owner)
         response = self.client.get(reverse("main:create_project"))
         self.assertEqual(response.status_code, 200)
 
@@ -108,6 +117,7 @@ class MainTest(TestCase):
         self.assertFalse(Project.objects.filter(pk=project.id).exists())
 
     def test_project_update_flow(self):
+        self.client.force_login(self.owner)
         project = Project.objects.create(
             title="Project Before Update",
             description="Original description",
@@ -140,6 +150,7 @@ class MainTest(TestCase):
         self.assertEqual(project.tech_stack, "Django, Python")
 
     def test_projects_page_renders_shared_delete_modal(self):
+        self.client.force_login(self.owner)
         project = Project.objects.create(
             title="Modal Test Project",
             description="A project used to check the delete modal",
@@ -154,6 +165,31 @@ class MainTest(TestCase):
         self.assertContains(response, "Delete Project?")
         self.assertContains(response, "Yes, Delete")
         self.assertContains(response, f'popovertarget="delete-project-{project.id}"')
+
+    def test_project_mutations_are_limited_to_superusers(self):
+        project = Project.objects.create(
+            title="Protected Project",
+            description="A project used to check permissions",
+            tech_stack="Django",
+        )
+        urls = [
+            reverse("main:create_project"),
+            reverse("main:update_project", args=[project.id]),
+            reverse("main:delete_project", args=[project.id]),
+        ]
+
+        for url in urls:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 302)
+
+        ordinary_user = User.objects.create_user(
+            username="regular_user",
+            password="test-password-123",
+        )
+        self.client.force_login(ordinary_user)
+        for url in urls:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 403)
 
     def test_experience_model(self):
         self.assertEqual(str(self.experience), self.experience.title)

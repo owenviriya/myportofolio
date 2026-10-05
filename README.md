@@ -78,6 +78,21 @@ Menurut saya, JSON lebih sering digunakan karena bentuknya ringkas dan cukup mud
 Pada bagian Education, pertama browser meminta halaman /education/, lalu view show_education memanggil get_education_json untuk mengambil data dari database. View JSON tersebut dapat menyaring data berdasarkan nama institusi, kemudian serializers.serialize("json", education) mengubah queryset Django menjadi JSON yang dikirim dengan content type application/json. Serialization diperlukan karena queryset dan object Django adalah object Python yang tidak bisa langsung dikirim sebagai JSON. Setelah menerima response, show_education membaca isinya dan memakai serializers.deserialize untuk mengubah JSON kembali menjadi object Django. Object tersebut dimasukkan ke context dan digunakan oleh template education.html untuk menampilkan data pendidikan.
 
 
+### Tugas 5
+
+1. Fungsi debouncing pada pencarian AJAX
+
+Debouncing adalah teknik untuk menunda pemanggilan suatu fungsi sampai tidak ada input baru selama durasi waktu tertentu. Pada fitur pencarian, setiap kali pengguna mengetik, timer sebelumnya dibatalkan dan timer baru dimulai. Request pencarian baru dikirim setelah pengguna berhenti mengetik, misalnya selama 300 milidetik. Dengan begitu, browser tidak mengirim request untuk setiap huruf yang diketik, sehingga jumlah request dan beban server dapat dikurangi.
+
+2. Fungsi 'await' ketika menggunakan 'fetch()'
+
+'fetch()' mengembalikan Promise karena browser perlu menunggu proses komunikasi dengan server. 'await' membuat eksekusi di dalam fungsi 'async' menunggu Promise tersebut selesai sebelum melanjutkan ke baris berikutnya. Setelah response diterima, saya bisa memeriksa statusnya dan membaca data JSON dengan 'await response.json()'. Tanpa 'await', kode langsung berjalan sementara hasil 'fetch()' masih berupa Promise, sehingga response atau data JSON belum siap digunakan.
+
+3. XSS pada data yang ditampilkan melalui JavaScript
+
+XSS (Cross-Site Scripting) adalah serangan ketika data berbahaya dari pengguna diperlakukan sebagai kode dan dijalankan di browser pengunjung. Pada halaman yang membuat HTML dengan JavaScript, nilai dari server bisa menjadi berbahaya jika langsung dimasukkan ke 'innerHTML', karena browser akan menafsirkannya sebagai markup. Template Django biasanya melakukan autoescape pada nilai yang dirender, sedangkan HTML yang dirakit sendiri melalui JavaScript perlu diamankan secara eksplisit. Karena itu, nilai teks di-escape sebelum dimasukkan ke HTML, dan input teks juga dibersihkan di server menggunakan 'strip_tags' pada form.
+
+
 ## AI Disclosure
 
 Dalam pengembangan website ini, saya menggunakan Gemini 3.6 Flash sebagai alat bantu belajar, brainstorming, dan debugging. Saya memberikan potongan HTML/CSS, screenshot, serta pesan error untuk memperoleh penjelasan dan alternatif solusi. Gemini membantu saya memahami elemen semantik HTML5, timeline, pseudo-element `::before`, responsive layout, media query, sticky navbar, smooth scrolling, Experience, Skills, efek hover, serta Conventional Commits. Saya tidak menyalin jawabannya secara langsung, tetapi menyesuaikan setiap saran dengan struktur proyek dan desain yang saya inginkan. Hasil akhir saya verifikasi melalui browser, DevTools, perangkat seluler, dan `python manage.py check`. Karena beberapa saran AI dapat bersifat umum atau kurang sesuai dengan kondisi repository, keputusan desain saya, implementasi, pengujian, dan perbaikan akhir tetap saya lakukan sendiri.
@@ -88,8 +103,11 @@ Pada Tugas 3, saya menggunakan ChatGPT Luna 5.6 sebagai tutor untuk memahami Mod
 
 Pada Tugas 4, saya menggunakan ChatGPT Luna 6 sebagai tutor interaktif untuk memahami autentikasi, otorisasi, session, cookie, dan CSRF, serta merencanakan penerapan peran Editor melalui Django Group. Saya meminta panduan bertahap, lalu mengimplementasikan sendiri pemeriksaan hak akses CRUD, relasi ManyToMany User pada Experience, migrasi database, dan komponen star yang dapat digunakan ulang. ChatGPT membantu meninjau perubahan pada view, template, migrasi, dan serialisasi JSON, serta menjelaskan kesalahan logika yang saya perbaiki. ChatGPT juga membantu memeriksa status migrasi, menjalankan pemeriksaan Django, dan memastikan development server dapat dimulai. Saya tetap bertanggung jawab memahami saran AI, menentukan implementasi akhir, dan melakukan verifikasi akhir terhadap alur aplikasi.
 
+Pada Tugas 5, saya menggunakan ChatGPT Luna 6 sebagai tutor untuk memahami Fetch API, Promise dan 'await', debouncing, CSRF, serta perlindungan XSS. Saya meminta penjelasan secara bertahap, lalu menggunakan pola Experience sebagai referensi untuk menerapkannya pada Education dan Skills. ChatGPT membantu meninjau kode pada template, view, URL, dan ModelForm, termasuk endpoint JSON manual, pencarian, modal tambah data, toast, dan sanitasi input. Saya tetap bertanggung jawab memahami saran AI, menentukan implementasi akhir, dan melakukan verifikasi akhir terhadap alur aplikasi.
+
 Log chat AI:
 - Tugas 1 : https://share.gemini.google/j5HEMG8OMOUF
 - Tugas 2 : https://chatgpt.com/s/cx_6aa807d7051c81918c56e334cabc3eed
 - Tugas 3 : https://chatgpt.com/s/cx_6ab14304123c8191a77b0f9ac4bf6fa6
 - Tugas 4 : https://chatgpt.com/s/cx_6aba610172e081919fe2ffda23259e65
+- Tugas 5 : https://chatgpt.com/s/cx_6ac397aacbc88191bcde9421e737c582

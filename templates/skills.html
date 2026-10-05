@@ -1,80 +1,257 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block meta %}
     <title>{{ name }} - Skills</title>
 {% endblock meta %}
 
 {% block content %}
-
 <main>
     <section class="site-section" id="skills">
         <div class="container">
             <h2 class="section-title" id="skills-title">Skills</h2>
             {% if user.is_superuser %}
-                <a href="{% url 'main:create_skill_group' %}"
-                class="button project-add-button">+ Add Skill Group</a>
+                <button type="button" class="button project-add-button" popovertarget="add-skill-group-modal">+ Add Skill Group</button>
             {% endif %}
 
-            <div class="skills-grid">
-                {% for group in skill_groups %}
-                <article class="skill-card">
-                    <h3>{{group.group_name}}</h3>
-                    <div class="skill-tags">
-                        {% for skill in group.skills %}
-                        <span>{{skill}}</span>
-                        {% endfor %}
-                    </div>
-                    <div class="record-actions">
-                        {% if user.is_superuser or can_edit %}
-                            <a href="{% url 'main:update_skill_group' group.id %}"
-                            class="button button-secondary">Edit</a>
-                        {% endif %}
+            <form id="skills-search-form" class="project-search">
+                <input type="search" id="skills-search-input" name="query"
+                       placeholder="Search skill groups or languages" class="project-search__input"
+                       aria-label="Search skill groups or languages">
+                <button type="submit" class="button">Search</button>
+            </form>
 
-                        {% if user.is_superuser %}
-                            {% url 'main:delete_skill_group' group.id as delete_url %}
-                            {% include "components/record_delete_modal.html" with record_slug="skill-group" record_id=group.id record_type="skill group" record_label=group.group_name delete_url=delete_url %}
-                        {% endif %}
-                    </div>
-                </article>
-                {% empty %}
-                    <p class="empty-state">
-                        No skills have been added yet.
-                    </p>
-                {% endfor %}
+            <div id="skills-loading" class="empty-state hide"><p>Loading skills...</p></div>
+            <div id="skills-error" class="empty-state hide"><p>Failed to load skills. Please try again.</p></div>
+            <div id="skills-empty" class="empty-state hide"><p>No skills or languages have been added or found.</p></div>
+
+            <div id="skill-groups-section" class="hide">
+                <div id="skill-groups-grid" class="skills-grid"></div>
             </div>
 
-            <div class="languages-block">
+            <div id="languages-section" class="languages-block hide">
                 <h3 class="subsection-title">Languages</h3>
                 {% if user.is_superuser %}
-                    <a href="{% url 'main:create_language' %}"
-                    class="button project-add-button">+ Add Language</a>
+                    <button type="button" class="button project-add-button" popovertarget="add-language-modal">+ Add Language</button>
                 {% endif %}
-                <div class="language-list">
-                    {% for language in languages %}
-                    <div class="language-item">
-                        <strong>{{language.language}}</strong>
-                        <span>{{language.proficiency}}</span>
-                        <div class="record-actions language-item__actions">
-                            {% if user.is_superuser or can_edit %}
-                                <a href="{% url 'main:update_language' language.id %}"
-                                class="button button-secondary">Edit</a>
-                            {% endif %}
-
-                            {% if user.is_superuser %}
-                                {% url 'main:delete_language' language.id as delete_url %}
-                                {% include "components/record_delete_modal.html" with record_slug="language" record_id=language.id record_type="language" record_label=language.language delete_url=delete_url %}
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% empty %}
-                        <p class="empty-state">
-                            No languages have been added yet.
-                        </p>
-                    {% endfor %}
-                </div>
+                <div id="languages-list" class="language-list"></div>
             </div>
         </div>
     </section>
 </main>
+
+{% if user.is_superuser %}
+    {% url 'main:create_skill_group_ajax' as skill_group_action %}
+    {% include "components/form_modal.html" with modal_id="add-skill-group-modal" form_id="skill-group-form" modal_title="Add Skill Group" action_url=skill_group_action submit_label="Add Skill Group" form=skill_group_form %}
+    {% url 'main:create_language_ajax' as language_action %}
+    {% include "components/form_modal.html" with modal_id="add-language-modal" form_id="language-form" modal_title="Add Language" action_url=language_action submit_label="Add Language" form=language_form %}
+{% endif %}
+
+<script>
+    const SKILL_GROUPS_ENDPOINT = "{% url 'main:get_skill_groups_json' %}";
+    const LANGUAGES_ENDPOINT = "{% url 'main:get_languages_json' %}";
+    const CREATE_SKILL_GROUP_ENDPOINT = "{% url 'main:create_skill_group_ajax' %}";
+    const CREATE_LANGUAGE_ENDPOINT = "{% url 'main:create_language_ajax' %}";
+    const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+    const CAN_EDIT = "{{ can_edit|yesno:'true,false' }}" === "true";
+    const loadingState = document.getElementById('skills-loading');
+    const errorState = document.getElementById('skills-error');
+    const emptyState = document.getElementById('skills-empty');
+    const groupsSection = document.getElementById('skill-groups-section');
+    const languagesSection = document.getElementById('languages-section');
+    const groupsContainer = document.getElementById('skill-groups-grid');
+    const languagesContainer = document.getElementById('languages-list');
+    const searchForm = document.getElementById('skills-search-form');
+    const searchInput = document.getElementById('skills-search-input');
+    const skillGroupForm = document.getElementById('skill-group-form');
+    const languageForm = document.getElementById('language-form');
+    const SEARCH_DEBOUNCE_DELAY = 300;
+    let searchDebounceTimer;
+    let skillsAbortController;
+
+    function displaySkillsState({ showLoading = false, showError = false, showEmpty = false, showLists = false }) {
+        loadingState.classList.toggle('hide', !showLoading);
+        errorState.classList.toggle('hide', !showError);
+        emptyState.classList.toggle('hide', !showEmpty);
+        groupsSection.classList.toggle('hide', !showLists);
+        languagesSection.classList.toggle('hide', !showLists);
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function buildSkillGroupCard(item) {
+        const group = item.fields;
+        const groupId = item.pk;
+        const editUrl = "{% url 'main:update_skill_group' '00000000-0000-0000-0000-000000000000' %}"
+            .replace('00000000-0000-0000-0000-000000000000', groupId);
+        const deleteUrl = "{% url 'main:delete_skill_group' '00000000-0000-0000-0000-000000000000' %}"
+            .replace('00000000-0000-0000-0000-000000000000', groupId);
+        const skillsHtml = Array.isArray(group.skills)
+            ? group.skills.map(skill => `<span>${escapeHtml(skill)}</span>`).join('')
+            : '';
+        const editHtml = (IS_SUPERUSER || CAN_EDIT)
+            ? `<a href="${editUrl}" class="button button-secondary">Edit</a>`
+            : '';
+        const deleteHtml = IS_SUPERUSER
+            ? `<form method="post" action="${deleteUrl}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button button-danger" onclick="return confirm('Yakin ingin menghapus skill group ini?');">Delete</button>
+               </form>`
+            : '';
+        const article = document.createElement('article');
+        article.className = 'skill-card';
+        article.innerHTML = `
+            <h3>${escapeHtml(group.group_name)}</h3>
+            <div class="skill-tags">${skillsHtml}</div>
+            <div class="record-actions">${editHtml}${deleteHtml}</div>`;
+        return article;
+    }
+
+    function buildLanguageElement(item) {
+        const language = item.fields;
+        const languageId = item.pk;
+        const editUrl = "{% url 'main:update_language' '00000000-0000-0000-0000-000000000000' %}"
+            .replace('00000000-0000-0000-0000-000000000000', languageId);
+        const deleteUrl = "{% url 'main:delete_language' '00000000-0000-0000-0000-000000000000' %}"
+            .replace('00000000-0000-0000-0000-000000000000', languageId);
+        const editHtml = (IS_SUPERUSER || CAN_EDIT)
+            ? `<a href="${editUrl}" class="button button-secondary">Edit</a>`
+            : '';
+        const deleteHtml = IS_SUPERUSER
+            ? `<form method="post" action="${deleteUrl}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button button-danger" onclick="return confirm('Yakin ingin menghapus bahasa ini?');">Delete</button>
+               </form>`
+            : '';
+        const element = document.createElement('div');
+        element.className = 'language-item';
+        element.innerHTML = `
+            <strong>${escapeHtml(language.language)}</strong>
+            <span>${escapeHtml(language.proficiency)}</span>
+            <div class="record-actions language-item__actions">${editHtml}${deleteHtml}</div>`;
+        return element;
+    }
+
+    async function fetchSkills(searchQuery = '') {
+        if (skillsAbortController) skillsAbortController.abort();
+        skillsAbortController = new AbortController();
+        try {
+            displaySkillsState({ showLoading: true });
+            const groupUrl = searchQuery
+                ? `${SKILL_GROUPS_ENDPOINT}?group_name=${encodeURIComponent(searchQuery)}`
+                : SKILL_GROUPS_ENDPOINT;
+            const languageUrl = searchQuery
+                ? `${LANGUAGES_ENDPOINT}?language=${encodeURIComponent(searchQuery)}`
+                : LANGUAGES_ENDPOINT;
+            const requestOptions = {
+                headers: { 'Accept': 'application/json' },
+                signal: skillsAbortController.signal,
+            };
+            const [groupResponse, languageResponse] = await Promise.all([
+                fetch(groupUrl, requestOptions),
+                fetch(languageUrl, requestOptions),
+            ]);
+            if (!groupResponse.ok || !languageResponse.ok) throw new Error('Failed to fetch skill data');
+            const [groups, languages] = await Promise.all([
+                groupResponse.json(),
+                languageResponse.json(),
+            ]);
+            groupsContainer.innerHTML = '';
+            languagesContainer.innerHTML = '';
+            if (groups.length === 0 && languages.length === 0) {
+                displaySkillsState({ showEmpty: true });
+                return;
+            }
+            if (groups.length === 0) {
+                groupsContainer.innerHTML = '<p class="empty-state">No skill groups found.</p>';
+            } else {
+                groups.forEach(item => groupsContainer.appendChild(buildSkillGroupCard(item)));
+            }
+            if (languages.length === 0) {
+                languagesContainer.innerHTML = '<p class="empty-state">No languages found.</p>';
+            } else {
+                languages.forEach(item => languagesContainer.appendChild(buildLanguageElement(item)));
+            }
+            displaySkillsState({ showLists: true });
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            console.error('Error loading skills:', error);
+            displaySkillsState({ showError: true });
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function submitSkillForm(event, form, endpoint, modalId, successTitle, successMessage, errorTitle) {
+        event.preventDefault();
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: new FormData(form),
+            });
+            const result = await response.json().catch(() => ({}));
+            if (response.ok) {
+                form.reset();
+                document.getElementById(modalId).hidePopover();
+                showToast(successTitle, successMessage, 'success');
+                fetchSkills(searchInput.value.trim());
+            } else {
+                const messages = result.errors
+                    ? Object.values(result.errors).flat().map(error => error.message)
+                    : [result.message || `Terjadi kesalahan (status ${response.status}).`];
+                showToast(errorTitle, messages.join(' '), 'error');
+            }
+        } catch (error) {
+            console.error(`Error submitting ${errorTitle}:`, error);
+            showToast(errorTitle, 'Tidak dapat terhubung ke server. Silakan coba lagi.', 'error');
+        } finally {
+            submitButton.disabled = false;
+        }
+    }
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => fetchSkills(searchInput.value.trim()), SEARCH_DEBOUNCE_DELAY);
+    });
+    searchForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        clearTimeout(searchDebounceTimer);
+        fetchSkills(searchInput.value.trim());
+    });
+    if (skillGroupForm) {
+        skillGroupForm.addEventListener('submit', event => submitSkillForm(
+            event, skillGroupForm, CREATE_SKILL_GROUP_ENDPOINT, 'add-skill-group-modal',
+            'Berhasil', 'Skill group baru berhasil ditambahkan!', 'Gagal menambahkan skill group'
+        ));
+    }
+    if (languageForm) {
+        languageForm.addEventListener('submit', event => submitSkillForm(
+            event, languageForm, CREATE_LANGUAGE_ENDPOINT, 'add-language-modal',
+            'Berhasil', 'Bahasa baru berhasil ditambahkan!', 'Gagal menambahkan bahasa'
+        ));
+    }
+    fetchSkills(searchInput.value.trim());
+</script>
 {% endblock content %}

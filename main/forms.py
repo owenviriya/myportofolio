@@ -119,6 +119,21 @@ class EducationForm(ModelForm):
             ),
         }
 
+    def clean_institution(self):
+        return strip_tags(self.cleaned_data["institution"]).strip()
+
+    def clean_period(self):
+        return strip_tags(self.cleaned_data["period"]).strip()
+
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()
+
+    def clean_highlight(self):
+        return strip_tags(self.cleaned_data["highlight"]).strip()
+
+    def clean_logo_path(self):
+        return strip_tags(self.cleaned_data["logo_path"]).strip()
+
 
 class ExperienceForm(ModelForm):
     class Meta:
@@ -201,6 +216,40 @@ class ExperienceForm(ModelForm):
             "tags": 'Enter a JSON list, for example: ["Django", "Leadership"]',
         }
 
+    def clean_title(self):
+        title = strip_tags(self.cleaned_data["title"]).strip()
+        if not title:
+            raise ValidationError("Nama experience tidak boleh hanya berisi tag HTML.")
+        return title
+    
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()
+
+    def clean_organization(self):
+        return strip_tags(self.cleaned_data["organization"]).strip()
+
+    def clean_period(self):
+        return strip_tags(self.cleaned_data["period"]).strip()
+
+    def clean_location(self):
+        return strip_tags(self.cleaned_data["location"]).strip()
+
+    def clean_highlights(self):
+        highlights = self.cleaned_data["highlights"]
+        if not isinstance(highlights, list) or not all(
+            isinstance(item, str) for item in highlights
+        ):
+            raise ValidationError("Highlights harus berupa daftar teks.")
+        return [strip_tags(item).strip() for item in highlights]
+
+    def clean_tags(self):
+        tags = self.cleaned_data["tags"]
+        if not isinstance(tags, list) or not all(
+            isinstance(item, str) for item in tags
+        ):
+            raise ValidationError("Tags harus berupa daftar teks.")
+        return [strip_tags(item).strip() for item in tags]
+
 
 class SkillGroupForm(ModelForm):
     class Meta:
@@ -240,6 +289,15 @@ class SkillGroupForm(ModelForm):
             "skills": 'Enter a JSON list, for example: ["Python", "Django"]',
         }
 
+    def clean_group_name(self):
+        return strip_tags(self.cleaned_data["group_name"]).strip()
+
+    def clean_skills(self):
+        skills = self.cleaned_data["skills"]
+        if not isinstance(skills, list) or not all(isinstance(skill, str) for skill in skills):
+            raise ValidationError("Skills harus berupa daftar teks.")
+        return [strip_tags(skill).strip() for skill in skills]
+
 
 class LanguageForm(ModelForm):
     class Meta:
@@ -274,3 +332,9 @@ class LanguageForm(ModelForm):
                 }
             ),
         }
+
+    def clean_language(self):
+        return strip_tags(self.cleaned_data["language"]).strip()
+
+    def clean_proficiency(self):
+        return strip_tags(self.cleaned_data["proficiency"]).strip()

@@ -11,7 +11,9 @@ from main.views import (show_main, show_experience, show_education,
                         update_language, delete_language,
                         create_experience, create_skill_group, create_language,
                         register, login_user, logout_user, toggle_star,
-                        toggle_experience_star, create_project_ajax
+                        toggle_experience_star, create_project_ajax,
+                        create_experience_ajax, create_education_ajax,
+                        create_skill_group_ajax, create_language_ajax,
                         )
 
 app_name = "main"
@@ -48,6 +50,10 @@ urlpatterns = [
     path("projects/<uuid:project_id>/star/", toggle_star, name="toggle_star"),
     path("experience/<uuid:experience_id>/star/", toggle_experience_star, name="toggle_experience_star"),
     path("projects/add-ajax/", create_project_ajax, name="create_project_ajax"),
+    path("experience/add-ajax/", create_experience_ajax, name="create_experience_ajax"),
+    path("education/add-ajax/", create_education_ajax, name="create_education_ajax"),
+    path("skills/groups/add-ajax/", create_skill_group_ajax, name="create_skill_group_ajax"),
+    path("skills/languages/add-ajax/", create_language_ajax, name="create_language_ajax"),
 
 
 ]

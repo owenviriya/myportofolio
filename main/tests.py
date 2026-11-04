@@ -149,7 +149,7 @@ class MainTest(TestCase):
         self.assertEqual(project.description, "Updated description")
         self.assertEqual(project.tech_stack, "Django, Python")
 
-    def test_projects_page_renders_shared_delete_modal(self):
+    def test_projects_page_uses_ajax_delete_confirmation(self):
         self.client.force_login(self.owner)
         project = Project.objects.create(
             title="Modal Test Project",
@@ -162,9 +162,10 @@ class MainTest(TestCase):
         response = self.client.get(reverse("main:show_projects"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Delete Project?")
-        self.assertContains(response, "Yes, Delete")
-        self.assertContains(response, f'popovertarget="delete-project-{project.id}"')
+        self.assertContains(response, 'id="grid"')
+        self.assertContains(response, "window.confirm('Delete this project?')")
+        self.assertContains(response, 'data-action="delete"')
+        self.assertNotContains(response, "delete-project-")
 
     def test_project_mutations_are_limited_to_superusers(self):
         project = Project.objects.create(
@@ -210,14 +211,12 @@ class MainTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "experience.html")
-        self.assertContains(response, self.experience.title)
-        self.assertContains(response, self.experience.description)
-        self.assertContains(response, self.experience.organization)
-        self.assertContains(response, self.experience.period)
-        self.assertContains(response, self.experience.location)
-        self.assertContains(response, self.experience.highlights[0])
-        self.assertContains(response, self.experience.tags[0])
-        self.assertContains(response, self.experience.logo)
+        self.assertContains(response, 'id="experience-list"')
+        self.assertContains(response, reverse("api:experience-list"))
+        api_response = self.client.get(reverse("api:experience-list"))
+        self.assertEqual(api_response.status_code, 200)
+        self.assertEqual(api_response.json()[0]["title"], self.experience.title)
+        self.assertEqual(api_response.json()[0]["highlights"][0], self.experience.highlights[0])
         self.assertContains(response, f'href="{reverse("main:show_main")}"')
 
     def test_empty_experience_page(self):
@@ -225,7 +224,7 @@ class MainTest(TestCase):
         response = self.client.get(reverse("main:show_experience"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No experience entries have been added yet.")
+        self.assertContains(response, "No experience have been added or found yet.")
 
     def test_education_model(self):
         self.assertEqual(str(self.education), "Universitas Indonesia (2025 - Present)")
@@ -237,11 +236,16 @@ class MainTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "education.html")
-        self.assertContains(response, self.education.institution)
-        self.assertContains(response, self.education.description)
-        self.assertContains(response, self.education.highlight)
-        self.assertContains(response, self.education.logo_path)
-        self.assertContains(response, self.education_second.institution)
+        self.assertContains(response, 'id="education-list"')
+        self.assertContains(response, reverse("main:get_education_json"))
+        api_response = self.client.get(reverse("main:get_education_json"))
+        self.assertEqual(api_response.status_code, 200)
+        education_data = api_response.json()
+        self.assertEqual(education_data[0]["fields"]["institution"], self.education.institution)
+        self.assertEqual(education_data[0]["fields"]["description"], self.education.description)
+        self.assertEqual(education_data[0]["fields"]["highlight"], self.education.highlight)
+        self.assertEqual(education_data[0]["fields"]["logo_path"], self.education.logo_path)
+        self.assertIn(self.education_second.institution, [item["fields"]["institution"] for item in education_data])
         self.assertContains(response, f'href="{reverse("main:show_skills")}"')
 
     def test_empty_education_page(self):
@@ -249,9 +253,10 @@ class MainTest(TestCase):
         response = self.client.get(reverse("main:show_education"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No education entries have been added yet.")
+        self.assertContains(response, "No education entries have been added or found.")
 
     def test_education_create_update_delete_flow(self):
+        self.client.force_login(self.owner)
         create_url = reverse("main:create_education")
         response = self.client.post(
             create_url,
@@ -294,6 +299,7 @@ class MainTest(TestCase):
 
     def test_education_create_form_requires_csrf_token(self):
         csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.owner)
         create_url = reverse("main:create_education")
         response = csrf_client.get(create_url)
 
@@ -324,6 +330,7 @@ class MainTest(TestCase):
         )
 
     def test_experience_create_update_delete_flow(self):
+        self.client.force_login(self.owner)
         create_url = reverse("main:create_experience")
         response = self.client.get(create_url)
         self.assertEqual(response.status_code, 200)
@@ -372,6 +379,7 @@ class MainTest(TestCase):
         self.assertFalse(Experience.objects.filter(pk=experience.id).exists())
 
     def test_skill_group_and_language_create_update_delete_flows(self):
+        self.client.force_login(self.owner)
         response = self.client.get(reverse("main:create_skill_group"))
         self.assertEqual(response.status_code, 200)
 
@@ -453,21 +461,20 @@ class MainTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "skills.html")
-        self.assertContains(response, self.skill_group.group_name)
-        self.assertContains(response, self.skill_group.skills[0])
-        self.assertContains(response, self.skill_group_second.group_name)
-        self.assertContains(response, self.language.language)
-        self.assertContains(response, self.language.proficiency)
+        self.assertContains(response, 'id="skill-groups-grid"')
+        self.assertContains(response, reverse("main:get_skill_groups_json"))
+        self.assertContains(response, reverse("main:get_languages_json"))
         self.assertContains(response, f'href="{reverse("main:show_education")}"')
 
-        content = response.content.decode()
+        groups = self.client.get(reverse("main:get_skill_groups_json")).json()
+        languages = self.client.get(reverse("main:get_languages_json")).json()
         self.assertLess(
-            content.index(self.skill_group.group_name),
-            content.index(self.skill_group_second.group_name),
+            next(i for i, item in enumerate(groups) if item["fields"]["group_name"] == self.skill_group.group_name),
+            next(i for i, item in enumerate(groups) if item["fields"]["group_name"] == self.skill_group_second.group_name),
         )
         self.assertLess(
-            content.index(self.language.language),
-            content.index(self.language_second.language),
+            next(i for i, item in enumerate(languages) if item["fields"]["language"] == self.language.language),
+            next(i for i, item in enumerate(languages) if item["fields"]["language"] == self.language_second.language),
         )
 
     def test_empty_skill_groups(self):
@@ -475,11 +482,11 @@ class MainTest(TestCase):
         response = self.client.get(reverse("main:show_skills"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No skills have been added yet.")
+        self.assertContains(response, "No skill groups found.")
 
     def test_empty_languages(self):
         Language.objects.all().delete()
         response = self.client.get(reverse("main:show_skills"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No languages have been added yet.")
+        self.assertContains(response, "No languages found.")

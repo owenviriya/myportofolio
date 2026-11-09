@@ -24,7 +24,11 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Buka http://localhost:8000/ pada browser.
+Buka http://localhost:8000/ pada browser. Untuk menjalankan seluruh test (termasuk test API DRF):
+
+```bash
+python manage.py test main
+```
 
 ## Deployment
 
@@ -92,6 +96,28 @@ Debouncing adalah teknik untuk menunda pemanggilan suatu fungsi sampai tidak ada
 
 XSS (Cross-Site Scripting) adalah serangan ketika data berbahaya dari pengguna diperlakukan sebagai kode dan dijalankan di browser pengunjung. Pada halaman yang membuat HTML dengan JavaScript, nilai dari server bisa menjadi berbahaya jika langsung dimasukkan ke 'innerHTML', karena browser akan menafsirkannya sebagai markup. Template Django biasanya melakukan autoescape pada nilai yang dirender, sedangkan HTML yang dirakit sendiri melalui JavaScript perlu diamankan secara eksplisit. Karena itu, nilai teks di-escape sebelum dimasukkan ke HTML, dan input teks juga dibersihkan di server menggunakan 'strip_tags' pada form.
 
+### Tugas 6
+
+1. REST dan perbedaan PUT dengan PATCH
+
+REST (Representational State Transfer) adalah gaya untuk merancang web API. Data diperlakukan sebagai resource yang ditunjuk URL, sedangkan HTTP method menyatakan tindakannya. Contohnya, `/api/v1/education/` menunjuk kumpulan data Education; `GET` membaca, `POST` membuat, `PUT` atau `PATCH` mengubah, dan `DELETE` menghapus data. JSON hanya format pertukaran data, jadi API yang mengembalikan JSON belum tentu RESTful. API juga perlu memakai resource URL, method, dan status HTTP secara konsisten. Misalnya, tindakan hapus lebih tepat dikirim sebagai `DELETE /api/v1/education/<uuid>/` daripada `POST /education/delete/<uuid>/`.
+
+PUT mengirim representasi lengkap untuk mengganti data, sehingga semua field wajib harus disertakan. PATCH mengirim hanya field yang ingin diubah. PUT cocok untuk mengganti seluruh isi entri Education, sedangkan PATCH cocok untuk memperbarui periodenya saja. Pada proyek ini, form edit menggunakan PATCH.
+
+2. Peran serializer pada Django REST Framework
+
+Serializer bekerja dua arah. Saat membaca data, serializer mengubah objek model menjadi data yang dapat dirender sebagai JSON. Saat menerima input, serializer memvalidasi dan membersihkan data sebelum menyimpannya ke model. Dibandingkan merakit dictionary secara manual dengan `JsonResponse` seperti pada Tutorial 05, serializer membuat struktur data dan validasi berada di satu tempat. Field yang dikirim dapat ditulis eksplisit, field hasil perhitungan dapat dibuat read-only, dan error validasi dapat dikirim per field dengan status 400. `ModelSerializer` juga menyediakan pola pembuatan dan pembaruan model, sehingga kode view lebih ringkas dan tidak perlu merakit response satu per satu.
+
+3. Perbedaan autentikasi dan otorisasi
+
+Autentikasi menjawab siapa yang mengirim request, sedangkan otorisasi menentukan tindakan apa yang boleh dilakukan pengguna tersebut. Pada proyek ini, `SessionAuthentication` mengenali pengguna dari sesi login Django dan mengisi `request.user`. Permission class seperti `IsPortfolioOwnerOrEditorOrReadOnly` kemudian memeriksa hak aksesnya. Pemeriksaan ini harus dilakukan di server karena menyembunyikan tombol di template hanya mengubah tampilan; pengguna masih dapat mengirim request langsung ke API. Karena itu, test juga memastikan request yang ditolak tidak mengubah data di database.
+
+4. CSRF pada SessionAuthentication dan keterbatasan `force_authenticate`
+
+Pada `SessionAuthentication`, browser mengirim cookie sesi secara otomatis. Jika request tulis tidak memakai token CSRF, situs lain dapat mencoba membuat browser pengguna yang sedang login mengirim perubahan atas nama pengguna tersebut. Karena itu, request `POST`, `PUT`, `PATCH`, dan `DELETE` dari halaman mengirim token melalui header `X-CSRFToken`.
+
+`force_authenticate` langsung menetapkan pengguna pada request dan melewati alur login sesi serta pemeriksaan CSRF. Tes yang memakai cara ini cocok untuk menguji permission, tetapi tidak membuktikan perlindungan CSRF. Untuk mengujinya, saya menggunakan `APIClient(enforce_csrf_checks=True)` dan `.login()`, lalu memeriksa bahwa request tanpa token ditolak dan request dengan token berhasil.
+
 
 ## AI Disclosure
 
@@ -105,9 +131,14 @@ Pada Tugas 4, saya menggunakan ChatGPT Luna 6 sebagai tutor interaktif untuk mem
 
 Pada Tugas 5, saya menggunakan ChatGPT Luna 6 sebagai tutor untuk memahami Fetch API, Promise dan 'await', debouncing, CSRF, serta perlindungan XSS. Saya meminta penjelasan secara bertahap, lalu menggunakan pola Experience sebagai referensi untuk menerapkannya pada Education dan Skills. ChatGPT membantu meninjau kode pada template, view, URL, dan ModelForm, termasuk endpoint JSON manual, pencarian, modal tambah data, toast, dan sanitasi input. Saya tetap bertanggung jawab memahami saran AI, menentukan implementasi akhir, dan melakukan verifikasi akhir terhadap alur aplikasi.
 
+Pada Tugas 6, saya menggunakan ChatGPT melalui Codex (GPT-6) sebagai tutor dan reviewer untuk memahami REST, serializer, permission, session, dan CSRF, lalu menerapkan pola DRF pada bagian Experience, Education, Skills, dan Language. Saya meminta penjelasan Tutorial 7 secara bertahap sambil mencocokkan contoh kode dengan struktur proyek, kemudian meminta review saat membangun serializer, API view, URL, dan interaksi Fetch di halaman. AI juga membantu menyusun test API Education dan menyesuaikan test halaman Education yang sebelumnya masih mengharapkan endpoint JSON manual. Saya meninjau dan menyesuaikan kode dengan model serta alur proyek, lalu menjalankan `python manage.py test main`; 95 test lulus pada verifikasi terbaru. Saya menggunakan AI sebagai tutor dan pemeriksa, tetapi tetap bertanggung jawab memahami, memilih, dan memeriksa perubahan yang digunakan.
+
+
+
 Log chat AI:
 - Tugas 1 : https://share.gemini.google/j5HEMG8OMOUF
 - Tugas 2 : https://chatgpt.com/s/cx_6aa807d7051c81918c56e334cabc3eed
 - Tugas 3 : https://chatgpt.com/s/cx_6ab14304123c8191a77b0f9ac4bf6fa6
 - Tugas 4 : https://chatgpt.com/s/cx_6aba610172e081919fe2ffda23259e65
 - Tugas 5 : https://chatgpt.com/s/cx_6ac397aacbc88191bcde9421e737c582
+- Tugas 6 : https://chatgpt.com/s/cx_6af190cb74bc8191a76af885996b4f78

@@ -27,6 +27,12 @@ class Education(models.Model):
     highlight = models.CharField(max_length=255)
     logo_path = models.CharField(max_length=255)
 
+    starred_by = models.ManyToManyField(
+        User,
+        related_name="starred_educations",
+        blank=True,
+    )
+
     def __str__(self):
         return f"{self.institution} ({self.period})"
 
@@ -36,6 +42,9 @@ class SkillGroup(models.Model):
     skills = models.JSONField(default=list)
     order = models.IntegerField(default=0)
 
+    starred_by = models.ManyToManyField(
+        User, related_name="starred_skill_groups", blank=True)
+
     def __str__(self):
         return f"{self.group_name}"
 
@@ -44,6 +53,9 @@ class Language(models.Model):
     language = models.CharField(max_length=255)
     proficiency = models.CharField(max_length=255)
     order = models.IntegerField(default=0)
+
+    starred_by = models.ManyToManyField(
+        User, related_name="starred_languages", blank=True)
 
     def __str__(self):
         return f"{self.language}"

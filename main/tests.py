@@ -237,15 +237,17 @@ class MainTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "education.html")
         self.assertContains(response, 'id="education-list"')
-        self.assertContains(response, reverse("main:get_education_json"))
-        api_response = self.client.get(reverse("main:get_education_json"))
+        self.assertContains(response, reverse("api:education-list"))
+        api_response = self.client.get(reverse("api:education-list"))
         self.assertEqual(api_response.status_code, 200)
         education_data = api_response.json()
-        self.assertEqual(education_data[0]["fields"]["institution"], self.education.institution)
-        self.assertEqual(education_data[0]["fields"]["description"], self.education.description)
-        self.assertEqual(education_data[0]["fields"]["highlight"], self.education.highlight)
-        self.assertEqual(education_data[0]["fields"]["logo_path"], self.education.logo_path)
-        self.assertIn(self.education_second.institution, [item["fields"]["institution"] for item in education_data])
+        education_by_id = {item["id"]: item for item in education_data}
+        education_data_for_test_entry = education_by_id[str(self.education.id)]
+        self.assertEqual(education_data_for_test_entry["institution"], self.education.institution)
+        self.assertEqual(education_data_for_test_entry["description"], self.education.description)
+        self.assertEqual(education_data_for_test_entry["highlight"], self.education.highlight)
+        self.assertEqual(education_data_for_test_entry["logo_path"], self.education.logo_path)
+        self.assertIn(self.education_second.institution, [item["institution"] for item in education_data])
         self.assertContains(response, f'href="{reverse("main:show_skills")}"')
 
     def test_empty_education_page(self):
@@ -462,19 +464,19 @@ class MainTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "skills.html")
         self.assertContains(response, 'id="skill-groups-grid"')
-        self.assertContains(response, reverse("main:get_skill_groups_json"))
-        self.assertContains(response, reverse("main:get_languages_json"))
+        self.assertContains(response, reverse("api:skill-group-list"))
+        self.assertContains(response, reverse("api:language-list"))
         self.assertContains(response, f'href="{reverse("main:show_education")}"')
 
-        groups = self.client.get(reverse("main:get_skill_groups_json")).json()
-        languages = self.client.get(reverse("main:get_languages_json")).json()
+        groups = self.client.get(reverse("api:skill-group-list")).json()
+        languages = self.client.get(reverse("api:language-list")).json()
         self.assertLess(
-            next(i for i, item in enumerate(groups) if item["fields"]["group_name"] == self.skill_group.group_name),
-            next(i for i, item in enumerate(groups) if item["fields"]["group_name"] == self.skill_group_second.group_name),
+            next(i for i, item in enumerate(groups) if item["group_name"] == self.skill_group.group_name),
+            next(i for i, item in enumerate(groups) if item["group_name"] == self.skill_group_second.group_name),
         )
         self.assertLess(
-            next(i for i, item in enumerate(languages) if item["fields"]["language"] == self.language.language),
-            next(i for i, item in enumerate(languages) if item["fields"]["language"] == self.language_second.language),
+            next(i for i, item in enumerate(languages) if item["language"] == self.language.language),
+            next(i for i, item in enumerate(languages) if item["language"] == self.language_second.language),
         )
 
     def test_empty_skill_groups(self):

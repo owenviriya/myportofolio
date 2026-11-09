@@ -1,7 +1,7 @@
 from django.utils.html import strip_tags
 from rest_framework import serializers
 
-from main.models import Experience, Project
+from main.models import Education, Experience, Language, Project, SkillGroup
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -89,6 +89,144 @@ class ExperienceSerializer(serializers.ModelSerializer):
         if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
             raise serializers.ValidationError("Expected a list of strings.")
         return [strip_tags(item).strip() for item in value]
+
+    def get_star_count(self, obj):
+        return obj.starred_by.count()
+
+    def get_is_starred(self, obj):
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return obj.starred_by.filter(pk=request.user.pk).exists()
+
+    def get_starred_by_names(self, obj):
+        return ", ".join(user.username for user in obj.starred_by.all())
+
+class EducationSerializer(serializers.ModelSerializer):
+    star_count = serializers.SerializerMethodField()
+    is_starred = serializers.SerializerMethodField()
+    starred_by_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Education
+        fields = [
+            "id",
+            "institution",
+            "period",
+            "description",
+            "highlight",
+            "logo_path",
+            "star_count",
+            "is_starred",
+            "starred_by_names",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_institution(self, value):
+        return self._clean_required_text(value, "Institution")
+
+    def validate_period(self, value):
+        return self._clean_required_text(value, "Period")
+
+    def validate_description(self, value):
+        return self._clean_required_text(value, "Description")
+
+    def validate_highlight(self, value):
+        return self._clean_required_text(value, "Highlight")
+
+    def validate_logo_path(self, value):
+        return self._clean_required_text(value, "Logo Path")
+
+    def get_star_count(self, obj):
+        return obj.starred_by.count()
+
+    def get_is_starred(self, obj):
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return obj.starred_by.filter(pk=request.user.pk).exists()
+
+    def get_starred_by_names(self, obj):
+        return ", ".join(user.username for user in obj.starred_by.all())
+
+    @staticmethod
+    def _clean_required_text(value, label):
+        value = strip_tags(value).strip()
+        if not value:
+            raise serializers.ValidationError(f"{label} cannot be empty.")
+        return value
+
+class SkillGroupSerializer(serializers.ModelSerializer):
+    star_count = serializers.SerializerMethodField()
+    is_starred = serializers.SerializerMethodField()
+    starred_by_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SkillGroup
+        fields = [
+            "id", "group_name", "skills", "order",
+            "star_count", "is_starred", "starred_by_names",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_group_name(self, value):
+        value = strip_tags(value).strip()
+        if not value:
+            raise serializers.ValidationError("Group name cannot be empty.")
+        return value
+
+    def validate_skills(self, value):
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            raise serializers.ValidationError("Expected a list of strings.")
+        return [strip_tags(item).strip() for item in value]
+
+    def validate_order(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Order cannot be negative.")
+        return value
+
+    def get_star_count(self, obj):
+        return obj.starred_by.count()
+
+    def get_is_starred(self, obj):
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return obj.starred_by.filter(pk=request.user.pk).exists()
+
+    def get_starred_by_names(self, obj):
+        return ", ".join(user.username for user in obj.starred_by.all())
+
+
+class LanguageSerializer(serializers.ModelSerializer):
+    star_count = serializers.SerializerMethodField()
+    is_starred = serializers.SerializerMethodField()
+    starred_by_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Language
+        fields = [
+            "id", "language", "proficiency", "order",
+            "star_count", "is_starred", "starred_by_names",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_language(self, value):
+        value = strip_tags(value).strip()
+        if not value:
+            raise serializers.ValidationError("Language cannot be empty.")
+        return value
+
+    def validate_proficiency(self, value):
+        value = strip_tags(value).strip()
+        if not value:
+            raise serializers.ValidationError("Proficiency cannot be empty.")
+        return value
+
+    def validate_order(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Order cannot be negative.")
+        return value
 
     def get_star_count(self, obj):
         return obj.starred_by.count()

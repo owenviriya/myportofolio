@@ -49,7 +49,59 @@
     {% url 'main:create_experience_ajax' as experience_action %}
     {% include "components/form_modal.html" with modal_id="add-experience-modal" form_id="experience-form" modal_title="Tambah Experience Baru" action_url=experience_action submit_label="Tambah Experience" form=form %}
 {% endif %}
+{% if user.is_superuser or can_edit %}
+<div id="edit-experience-modal"
+     class="form-modal"
+     popover="auto"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="edit-experience-title">
+    <div class="form-modal__content">
+        <button type="button"
+                class="form-modal__close"
+                popovertarget="edit-experience-modal"
+                popovertargetaction="hide"
+                aria-label="Tutup modal">×</button>
 
+        <h2 id="edit-experience-title">Edit Experience</h2>
+
+        <form id="edit-experience-form" class="project-form">
+            <label for="edit-exp-title">Title</label>
+            <input id="edit-exp-title" name="title" required>
+
+            <label for="edit-exp-description">Description</label>
+            <textarea id="edit-exp-description" name="description" required></textarea>
+
+            <label for="edit-exp-organization">Organization</label>
+            <input id="edit-exp-organization" name="organization">
+
+            <label for="edit-exp-period">Period</label>
+            <input id="edit-exp-period" name="period">
+
+            <label for="edit-exp-logo">Logo URL</label>
+            <input id="edit-exp-logo" name="logo">
+
+            <label for="edit-exp-location">Location</label>
+            <input id="edit-exp-location" name="location">
+
+            <label for="edit-exp-highlights">Highlights (JSON list)</label>
+            <textarea id="edit-exp-highlights" name="highlights"
+                      placeholder='["Contoh highlight"]'></textarea>
+
+            <label for="edit-exp-tags">Tags (JSON list)</label>
+            <textarea id="edit-exp-tags" name="tags"
+                      placeholder='["Contoh tag"]'></textarea>
+
+            <div class="form-modal__actions">
+                <button type="button" class="button button-secondary"
+                        popovertarget="edit-experience-modal"
+                        popovertargetaction="hide">Batal</button>
+                <button type="submit" class="button">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% csrf_token %}
 <script>
     const BASE_EXPERIENCE_ENDPOINT = "{% url 'api:experience-list' %}";
@@ -100,9 +152,6 @@
             ? `<img src="${escapeHtml(experience.logo)}" alt="Gambar ${escapeHtml(experience.title)}" class="experience-logo">`
             : '';
 
-        const editUrl = "{% url 'main:update_experience' '00000000-0000-0000-0000-000000000000' %}"
-            .replace('00000000-0000-0000-0000-000000000000', experienceId);
-
         const deleteHtml = IS_SUPERUSER 
             ? `<button type="button" class="button button-danger" data-action="delete"
                 data-id="${escapeHtml(experienceId)}">Delete</button>`
@@ -136,8 +185,11 @@
                 <span class="star-count">${experience.star_count}</span></a>`;
 
         const editHtml = (IS_SUPERUSER || CAN_EDIT)
-                ? `<a href="${editUrl}" class="button button-secondary">Edit</a>`
-                : '';
+            ? `<button type="button" class="button button-secondary"
+                data-action="edit" data-id="${escapeHtml(experienceId)}">
+                Edit
+            </button>`
+            : '';
         // Komponen card
         const completeCardHtml = `
             ${imageHtml}
@@ -172,6 +224,30 @@
 
     function closeExperienceModal() {
         document.getElementById("add-experience-modal").hidePopover();
+    }
+
+    // Mengganti UUID placeholder pada pola URL dengan ID experience asli
+    function experienceEndpoint(pattern, id) {
+        return pattern.replace('00000000-0000-0000-0000-000000000000', id);
+    }
+
+    const EXPERIENCE_TEXT_FIELDS = ['title', 'description', 'organization', 'period', 'logo', 'location'];
+    const EXPERIENCE_LIST_FIELDS = ['highlights', 'tags'];
+
+    // Membaca field form menjadi payload JSON untuk API; field list di-parse dari teks JSON
+    function buildExperiencePayload(form) {
+        const fields = new FormData(form);
+        const payload = Object.fromEntries(
+            EXPERIENCE_TEXT_FIELDS.map(name => [name, fields.get(name) ?? '']),
+        );
+        for (const name of EXPERIENCE_LIST_FIELDS) {
+            try {
+                payload[name] = JSON.parse(fields.get(name) || '[]');
+            } catch {
+                throw new Error(`${name} harus berupa JSON list yang valid.`);
+            }
+        }
+        return payload;
     }
 
     
@@ -276,19 +352,7 @@
         submitButton.disabled = true;
 
         try {
-            const fields = new FormData(experienceForm);
-            const payload = Object.fromEntries([
-                'title', 'description', 'organization', 'period',
-                'logo', 'location', 'highlights', 'tags',
-            ].map(name => [name, fields.get(name)]));
-            for (const name of ['highlights', 'tags']) {
-                try {
-                    payload[name] = JSON.parse(payload[name] || '[]');
-                } catch {
-                    throw new Error(`${name} harus berupa JSON list yang valid.`);
-                }
-            }
-
+            const payload = buildExperiencePayload(experienceForm);
             await writeExperience(BASE_EXPERIENCE_ENDPOINT, 'POST', payload);
             experienceForm.reset();
             closeExperienceModal();
@@ -306,6 +370,64 @@
         experienceForm.addEventListener('submit', addExperience);
     }
 
+    const editModal = document.getElementById('edit-experience-modal');
+    const editForm = document.getElementById('edit-experience-form');
+    let editingExperienceId = null;
+
+    // Mengambil data terbaru dari API lalu mengisi modal edit
+    async function openEditModal(experienceId) {
+        const response = await fetch(experienceEndpoint(DETAIL_EXPERIENCE_ENDPOINT, experienceId), {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(`Gagal memuat experience (HTTP ${response.status}).`);
+        const experience = await response.json();
+
+        editingExperienceId = experience.id;
+        for (const name of EXPERIENCE_TEXT_FIELDS) {
+            editForm.elements[name].value = experience[name] ?? '';
+        }
+        for (const name of EXPERIENCE_LIST_FIELDS) {
+            editForm.elements[name].value = JSON.stringify(experience[name] ?? []);
+        }
+        editModal.showPopover();
+    }
+
+    // Mengirim perubahan lewat PATCH sehingga hanya field form yang diperbarui
+    async function submitEditExperience(event) {
+        event.preventDefault();
+        const submitButton = editForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        try {
+            const payload = buildExperiencePayload(editForm);
+            await writeExperience(
+                experienceEndpoint(DETAIL_EXPERIENCE_ENDPOINT, editingExperienceId), 'PATCH', payload,
+            );
+            editModal.hidePopover();
+            showToast('Berhasil', 'Experience berhasil diperbarui!', 'success');
+            await fetchExperiences(searchInput.value.trim());
+        } catch (error) {
+            showToast('Gagal memperbarui experience', error.message, 'error');
+        } finally {
+            submitButton.disabled = false;
+        }
+    }
+
+    if (editForm) {
+        editForm.addEventListener('submit', submitEditExperience);
+    }
+
+    // Menjalankan aksi star atau delete lewat API sesuai tombol yang diklik
+    async function runCardAction(action, experienceId) {
+        if (action === 'star') {
+            await writeExperience(experienceEndpoint(STAR_EXPERIENCE_ENDPOINT, experienceId), 'POST');
+            showToast('Berhasil', 'Star diperbarui.', 'success');
+        } else if (action === 'delete') {
+            await writeExperience(experienceEndpoint(DETAIL_EXPERIENCE_ENDPOINT, experienceId), 'DELETE');
+            showToast('Berhasil', 'Experience dihapus.', 'success');
+        }
+        await fetchExperiences(searchInput.value.trim());
+    }
+
     listContainer.addEventListener('click', async function(event) {
         const button = event.target.closest('button[data-action]');
         if (!button || button.disabled) return;
@@ -314,12 +436,11 @@
 
         button.disabled = true;
         try {
-            const endpoint = action === 'star'
-                ? experienceEndpoint(STAR_EXPERIENCE_ENDPOINT, button.dataset.id)
-                : experienceEndpoint(DETAIL_EXPERIENCE_ENDPOINT, button.dataset.id);
-            await writeExperience(endpoint, action === 'star' ? 'POST' : 'DELETE');
-            showToast('Berhasil', action === 'star' ? 'Star diperbarui.' : 'Experience dihapus.', 'success');
-            await fetchExperiences(searchInput.value.trim());
+            if (action === 'edit') {
+                await openEditModal(button.dataset.id);
+            } else {
+                await runCardAction(action, button.dataset.id);
+            }
         } catch (error) {
             showToast('Permintaan gagal', error.message, 'error');
         } finally {

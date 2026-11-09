@@ -46,13 +46,106 @@
     {% include "components/form_modal.html" with modal_id="add-language-modal" form_id="language-form" modal_title="Add Language" action_url=language_action submit_label="Add Language" form=language_form %}
 {% endif %}
 
+{% if user.is_superuser or can_edit %}
+<div id="edit-skill-group-modal" class="form-modal" popover="auto" role="dialog"
+     aria-modal="true" aria-labelledby="edit-skill-group-title">
+    <div class="form-modal__content">
+        <button type="button" class="form-modal__close" popovertarget="edit-skill-group-modal"
+                popovertargetaction="hide" aria-label="Tutup modal">×</button>
+        <h2 id="edit-skill-group-title">Edit Skill Group</h2>
+        <form id="edit-skill-group-form" class="project-form">
+            <div class="form-group">
+                <label for="edit-skill-group-name">Skill Group Name</label>
+                <input id="edit-skill-group-name" name="group_name" maxlength="255" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-skill-group-skills">Skills (JSON list)</label>
+                <textarea id="edit-skill-group-skills" name="skills" rows="3"
+                          placeholder='["Python", "Django"]'></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-skill-group-order">Display Order</label>
+                <input id="edit-skill-group-order" name="order" type="number" min="0" step="1">
+            </div>
+            <div class="form-modal__actions">
+                <button type="button" class="button button-secondary" popovertarget="edit-skill-group-modal"
+                        popovertargetaction="hide">Batal</button>
+                <button type="submit" class="button">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="edit-language-modal" class="form-modal" popover="auto" role="dialog"
+     aria-modal="true" aria-labelledby="edit-language-title">
+    <div class="form-modal__content">
+        <button type="button" class="form-modal__close" popovertarget="edit-language-modal"
+                popovertargetaction="hide" aria-label="Tutup modal">×</button>
+        <h2 id="edit-language-title">Edit Language</h2>
+        <form id="edit-language-form" class="project-form">
+            <div class="form-group">
+                <label for="edit-language-language">Language</label>
+                <input id="edit-language-language" name="language" maxlength="255" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-language-proficiency">Proficiency</label>
+                <input id="edit-language-proficiency" name="proficiency" maxlength="255" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-language-order">Display Order</label>
+                <input id="edit-language-order" name="order" type="number" min="0" step="1">
+            </div>
+            <div class="form-modal__actions">
+                <button type="button" class="button button-secondary" popovertarget="edit-language-modal"
+                        popovertargetaction="hide">Batal</button>
+                <button type="submit" class="button">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% csrf_token %}
 <script>
-    const SKILL_GROUPS_ENDPOINT = "{% url 'main:get_skill_groups_json' %}";
-    const LANGUAGES_ENDPOINT = "{% url 'main:get_languages_json' %}";
-    const CREATE_SKILL_GROUP_ENDPOINT = "{% url 'main:create_skill_group_ajax' %}";
-    const CREATE_LANGUAGE_ENDPOINT = "{% url 'main:create_language_ajax' %}";
+    const UUID_PLACEHOLDER = '00000000-0000-0000-0000-000000000000';
     const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+    const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
     const CAN_EDIT = "{{ can_edit|yesno:'true,false' }}" === "true";
+    const LOGIN_URL = "{% url 'main:login' %}";
+    const SEARCH_DEBOUNCE_DELAY = 300;
+
+    // Konfigurasi tiap resource agar tambah, edit, star, dan delete memakai satu alur yang sama
+    const RESOURCES = {
+        'skill-group': {
+            label: 'Skill group',
+            listEndpoint: "{% url 'api:skill-group-list' %}",
+            detailEndpoint: "{% url 'api:skill-group-detail' '00000000-0000-0000-0000-000000000000' %}",
+            starEndpoint: "{% url 'api:skill-group-star' '00000000-0000-0000-0000-000000000000' %}",
+            searchParam: 'group_name',
+            textFields: ['group_name'],
+            listFields: ['skills'],
+            numberFields: ['order'],
+            addFormId: 'skill-group-form',
+            addModalId: 'add-skill-group-modal',
+            editFormId: 'edit-skill-group-form',
+            editModalId: 'edit-skill-group-modal',
+        },
+        'language': {
+            label: 'Bahasa',
+            listEndpoint: "{% url 'api:language-list' %}",
+            detailEndpoint: "{% url 'api:language-detail' '00000000-0000-0000-0000-000000000000' %}",
+            starEndpoint: "{% url 'api:language-star' '00000000-0000-0000-0000-000000000000' %}",
+            searchParam: 'language',
+            textFields: ['language', 'proficiency'],
+            listFields: [],
+            numberFields: ['order'],
+            addFormId: 'language-form',
+            addModalId: 'add-language-modal',
+            editFormId: 'edit-language-form',
+            editModalId: 'edit-language-modal',
+        },
+    };
+
     const loadingState = document.getElementById('skills-loading');
     const errorState = document.getElementById('skills-error');
     const emptyState = document.getElementById('skills-empty');
@@ -62,11 +155,9 @@
     const languagesContainer = document.getElementById('languages-list');
     const searchForm = document.getElementById('skills-search-form');
     const searchInput = document.getElementById('skills-search-input');
-    const skillGroupForm = document.getElementById('skill-group-form');
-    const languageForm = document.getElementById('language-form');
-    const SEARCH_DEBOUNCE_DELAY = 300;
     let searchDebounceTimer;
     let skillsAbortController;
+    const editingIds = {};
 
     function displaySkillsState({ showLoading = false, showError = false, showEmpty = false, showLists = false }) {
         loadingState.classList.toggle('hide', !showLoading);
@@ -85,57 +176,76 @@
             .replaceAll("'", '&#39;');
     }
 
-    function buildSkillGroupCard(item) {
-        const group = item.fields;
-        const groupId = item.pk;
-        const editUrl = "{% url 'main:update_skill_group' '00000000-0000-0000-0000-000000000000' %}"
-            .replace('00000000-0000-0000-0000-000000000000', groupId);
-        const deleteUrl = "{% url 'main:delete_skill_group' '00000000-0000-0000-0000-000000000000' %}"
-            .replace('00000000-0000-0000-0000-000000000000', groupId);
-        const skillsHtml = Array.isArray(group.skills)
-            ? group.skills.map(skill => `<span>${escapeHtml(skill)}</span>`).join('')
-            : '';
+    function getCookie(name) {
+        const prefix = `${name}=`;
+        const cookie = document.cookie.split(';').map(value => value.trim())
+            .find(value => value.startsWith(prefix));
+        return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+    }
+
+    function recordEndpoint(pattern, id) {
+        return pattern.replace(UUID_PLACEHOLDER, id);
+    }
+
+    // Tombol star, edit, dan delete yang sama untuk skill group maupun bahasa
+    function buildActionButtons(resourceKey, record) {
+        const id = escapeHtml(record.id);
+        const starTitle = record.star_count > 0
+            ? `Dibintangi oleh ${escapeHtml(record.starred_by_names)}`
+            : 'Jadilah yang pertama memberi star';
+        const starHtml = IS_AUTHENTICATED
+            ? `<button type="button" class="button button-star${record.is_starred ? ' is-starred' : ''}"
+                data-action="star" data-resource="${resourceKey}" data-id="${id}" title="${starTitle}">
+                <span aria-hidden="true">★</span> ${record.is_starred ? 'Unstar' : 'Star'}
+                <span class="star-count">${record.star_count}</span></button>`
+            : `<a href="${LOGIN_URL}" class="button button-star">
+                <span aria-hidden="true">★</span> Login untuk memberi star
+                <span class="star-count">${record.star_count}</span></a>`;
         const editHtml = (IS_SUPERUSER || CAN_EDIT)
-            ? `<a href="${editUrl}" class="button button-secondary">Edit</a>`
+            ? `<button type="button" class="button button-secondary"
+                data-action="edit" data-resource="${resourceKey}" data-id="${id}">Edit</button>`
             : '';
         const deleteHtml = IS_SUPERUSER
-            ? `<form method="post" action="${deleteUrl}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="button button-danger" onclick="return confirm('Yakin ingin menghapus skill group ini?');">Delete</button>
-               </form>`
+            ? `<button type="button" class="button button-danger"
+                data-action="delete" data-resource="${resourceKey}" data-id="${id}">Delete</button>`
+            : '';
+        return `${starHtml}${editHtml}${deleteHtml}`;
+    }
+
+    function buildSkillGroupCard(group) {
+        const skillsHtml = Array.isArray(group.skills)
+            ? group.skills.map(skill => `<span>${escapeHtml(skill)}</span>`).join('')
             : '';
         const article = document.createElement('article');
         article.className = 'skill-card';
         article.innerHTML = `
             <h3>${escapeHtml(group.group_name)}</h3>
             <div class="skill-tags">${skillsHtml}</div>
-            <div class="record-actions">${editHtml}${deleteHtml}</div>`;
+            <div class="record-actions">${buildActionButtons('skill-group', group)}</div>`;
         return article;
     }
 
-    function buildLanguageElement(item) {
-        const language = item.fields;
-        const languageId = item.pk;
-        const editUrl = "{% url 'main:update_language' '00000000-0000-0000-0000-000000000000' %}"
-            .replace('00000000-0000-0000-0000-000000000000', languageId);
-        const deleteUrl = "{% url 'main:delete_language' '00000000-0000-0000-0000-000000000000' %}"
-            .replace('00000000-0000-0000-0000-000000000000', languageId);
-        const editHtml = (IS_SUPERUSER || CAN_EDIT)
-            ? `<a href="${editUrl}" class="button button-secondary">Edit</a>`
-            : '';
-        const deleteHtml = IS_SUPERUSER
-            ? `<form method="post" action="${deleteUrl}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="button button-danger" onclick="return confirm('Yakin ingin menghapus bahasa ini?');">Delete</button>
-               </form>`
-            : '';
+    function buildLanguageElement(language) {
         const element = document.createElement('div');
         element.className = 'language-item';
         element.innerHTML = `
             <strong>${escapeHtml(language.language)}</strong>
             <span>${escapeHtml(language.proficiency)}</span>
-            <div class="record-actions language-item__actions">${editHtml}${deleteHtml}</div>`;
+            <div class="record-actions language-item__actions">${buildActionButtons('language', language)}</div>`;
         return element;
+    }
+
+    function emptyMessage(text) {
+        const paragraph = document.createElement('p');
+        paragraph.className = 'empty-state';
+        paragraph.textContent = text;
+        return paragraph;
+    }
+
+    function searchUrl(resource, searchQuery) {
+        const url = new URL(resource.listEndpoint, window.location.origin);
+        if (searchQuery) url.searchParams.set(resource.searchParam, searchQuery);
+        return url;
     }
 
     async function fetchSkills(searchQuery = '') {
@@ -143,41 +253,29 @@
         skillsAbortController = new AbortController();
         try {
             displaySkillsState({ showLoading: true });
-            const groupUrl = searchQuery
-                ? `${SKILL_GROUPS_ENDPOINT}?group_name=${encodeURIComponent(searchQuery)}`
-                : SKILL_GROUPS_ENDPOINT;
-            const languageUrl = searchQuery
-                ? `${LANGUAGES_ENDPOINT}?language=${encodeURIComponent(searchQuery)}`
-                : LANGUAGES_ENDPOINT;
             const requestOptions = {
-                headers: { 'Accept': 'application/json' },
+                headers: { Accept: 'application/json' },
                 signal: skillsAbortController.signal,
             };
             const [groupResponse, languageResponse] = await Promise.all([
-                fetch(groupUrl, requestOptions),
-                fetch(languageUrl, requestOptions),
+                fetch(searchUrl(RESOURCES['skill-group'], searchQuery), requestOptions),
+                fetch(searchUrl(RESOURCES['language'], searchQuery), requestOptions),
             ]);
             if (!groupResponse.ok || !languageResponse.ok) throw new Error('Failed to fetch skill data');
             const [groups, languages] = await Promise.all([
                 groupResponse.json(),
                 languageResponse.json(),
             ]);
-            groupsContainer.innerHTML = '';
-            languagesContainer.innerHTML = '';
             if (groups.length === 0 && languages.length === 0) {
                 displaySkillsState({ showEmpty: true });
                 return;
             }
-            if (groups.length === 0) {
-                groupsContainer.innerHTML = '<p class="empty-state">No skill groups found.</p>';
-            } else {
-                groups.forEach(item => groupsContainer.appendChild(buildSkillGroupCard(item)));
-            }
-            if (languages.length === 0) {
-                languagesContainer.innerHTML = '<p class="empty-state">No languages found.</p>';
-            } else {
-                languages.forEach(item => languagesContainer.appendChild(buildLanguageElement(item)));
-            }
+            groupsContainer.replaceChildren(...(groups.length
+                ? groups.map(buildSkillGroupCard)
+                : [emptyMessage('No skill groups found.')]));
+            languagesContainer.replaceChildren(...(languages.length
+                ? languages.map(buildLanguageElement)
+                : [emptyMessage('No languages found.')]));
             displaySkillsState({ showLists: true });
         } catch (error) {
             if (error.name === 'AbortError') return;
@@ -186,49 +284,147 @@
         }
     }
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+    function apiErrorMessage(data, status) {
+        const messages = Object.values(data).flat().filter(value => typeof value === 'string');
+        return messages.join(' ') || `Request failed (HTTP ${status}).`;
     }
 
-    async function submitSkillForm(event, form, endpoint, modalId, successTitle, successMessage, errorTitle) {
+    // Satu tempat untuk POST/PATCH/DELETE: JSON, token CSRF, dan pesan error dari API
+    async function writeRecord(url, method, payload) {
+        const response = await fetch(url, {
+            method,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: payload === undefined ? undefined : JSON.stringify(payload),
+        });
+        if (response.status === 204) return null;
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
+        return data;
+    }
+
+    // Mengubah isi form menjadi payload JSON sesuai tipe tiap field
+    function buildPayload(form, resource) {
+        const fields = new FormData(form);
+        const payload = {};
+        for (const name of resource.textFields) {
+            payload[name] = fields.get(name) ?? '';
+        }
+        for (const name of resource.numberFields) {
+            payload[name] = Number(fields.get(name) || 0);
+        }
+        for (const name of resource.listFields) {
+            try {
+                payload[name] = JSON.parse(fields.get(name) || '[]');
+            } catch {
+                throw new Error(`${name} harus berupa JSON list yang valid.`);
+            }
+        }
+        return payload;
+    }
+
+    async function addRecord(event, resourceKey) {
         event.preventDefault();
+        const resource = RESOURCES[resourceKey];
+        const form = event.currentTarget;
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
         try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') },
-                body: new FormData(form),
-            });
-            const result = await response.json().catch(() => ({}));
-            if (response.ok) {
-                form.reset();
-                document.getElementById(modalId).hidePopover();
-                showToast(successTitle, successMessage, 'success');
-                fetchSkills(searchInput.value.trim());
-            } else {
-                const messages = result.errors
-                    ? Object.values(result.errors).flat().map(error => error.message)
-                    : [result.message || `Terjadi kesalahan (status ${response.status}).`];
-                showToast(errorTitle, messages.join(' '), 'error');
-            }
+            await writeRecord(resource.listEndpoint, 'POST', buildPayload(form, resource));
+            form.reset();
+            document.getElementById(resource.addModalId).hidePopover();
+            showToast('Berhasil', `${resource.label} baru berhasil ditambahkan!`, 'success');
+            await fetchSkills(searchInput.value.trim());
         } catch (error) {
-            console.error(`Error submitting ${errorTitle}:`, error);
-            showToast(errorTitle, 'Tidak dapat terhubung ke server. Silakan coba lagi.', 'error');
+            showToast(`Gagal menambahkan ${resource.label.toLowerCase()}`, error.message, 'error');
         } finally {
             submitButton.disabled = false;
         }
+    }
+
+    // Mengambil data terbaru dari API lalu mengisi modal edit
+    async function openEditModal(resourceKey, id) {
+        const resource = RESOURCES[resourceKey];
+        const response = await fetch(recordEndpoint(resource.detailEndpoint, id), {
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(`Gagal memuat data (HTTP ${response.status}).`);
+        const record = await response.json();
+
+        const form = document.getElementById(resource.editFormId);
+        for (const name of [...resource.textFields, ...resource.numberFields]) {
+            form.elements[name].value = record[name] ?? '';
+        }
+        for (const name of resource.listFields) {
+            form.elements[name].value = JSON.stringify(record[name] ?? []);
+        }
+        editingIds[resourceKey] = record.id;
+        document.getElementById(resource.editModalId).showPopover();
+    }
+
+    // Mengirim perubahan lewat PATCH sehingga hanya field dari form yang diperbarui
+    async function submitEdit(event, resourceKey) {
+        event.preventDefault();
+        const resource = RESOURCES[resourceKey];
+        const form = event.currentTarget;
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        try {
+            await writeRecord(
+                recordEndpoint(resource.detailEndpoint, editingIds[resourceKey]),
+                'PATCH', buildPayload(form, resource),
+            );
+            document.getElementById(resource.editModalId).hidePopover();
+            showToast('Berhasil', `${resource.label} berhasil diperbarui!`, 'success');
+            await fetchSkills(searchInput.value.trim());
+        } catch (error) {
+            showToast(`Gagal memperbarui ${resource.label.toLowerCase()}`, error.message, 'error');
+        } finally {
+            submitButton.disabled = false;
+        }
+    }
+
+    async function runCardAction(action, resourceKey, id) {
+        const resource = RESOURCES[resourceKey];
+        if (action === 'edit') {
+            await openEditModal(resourceKey, id);
+            return;
+        }
+        if (action === 'star') {
+            await writeRecord(recordEndpoint(resource.starEndpoint, id), 'POST');
+            showToast('Berhasil', 'Star diperbarui.', 'success');
+        } else if (action === 'delete') {
+            if (!window.confirm(`Yakin ingin menghapus ${resource.label.toLowerCase()} ini?`)) return;
+            await writeRecord(recordEndpoint(resource.detailEndpoint, id), 'DELETE');
+            showToast('Berhasil', `${resource.label} berhasil dihapus.`, 'success');
+        } else {
+            return;
+        }
+        await fetchSkills(searchInput.value.trim());
+    }
+
+    // Event delegation: satu listener menangani tombol pada kartu yang dirender ulang
+    document.getElementById('skills').addEventListener('click', async function(event) {
+        const button = event.target.closest('button[data-action][data-resource]');
+        if (!button || button.disabled || !RESOURCES[button.dataset.resource]) return;
+        button.disabled = true;
+        try {
+            await runCardAction(button.dataset.action, button.dataset.resource, button.dataset.id);
+        } catch (error) {
+            showToast('Permintaan gagal', error.message, 'error');
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    for (const [resourceKey, resource] of Object.entries(RESOURCES)) {
+        const addForm = document.getElementById(resource.addFormId);
+        if (addForm) addForm.addEventListener('submit', event => addRecord(event, resourceKey));
+        const editForm = document.getElementById(resource.editFormId);
+        if (editForm) editForm.addEventListener('submit', event => submitEdit(event, resourceKey));
     }
 
     searchInput.addEventListener('input', function() {
@@ -240,18 +436,6 @@
         clearTimeout(searchDebounceTimer);
         fetchSkills(searchInput.value.trim());
     });
-    if (skillGroupForm) {
-        skillGroupForm.addEventListener('submit', event => submitSkillForm(
-            event, skillGroupForm, CREATE_SKILL_GROUP_ENDPOINT, 'add-skill-group-modal',
-            'Berhasil', 'Skill group baru berhasil ditambahkan!', 'Gagal menambahkan skill group'
-        ));
-    }
-    if (languageForm) {
-        languageForm.addEventListener('submit', event => submitSkillForm(
-            event, languageForm, CREATE_LANGUAGE_ENDPOINT, 'add-language-modal',
-            'Berhasil', 'Bahasa baru berhasil ditambahkan!', 'Gagal menambahkan bahasa'
-        ));
-    }
     fetchSkills(searchInput.value.trim());
 </script>
 {% endblock content %}
